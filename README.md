@@ -24,8 +24,8 @@
 | 平台 | 验证程度 |
 | --- | --- |
 | macOS Apple Silicon | 日常使用 |
-| macOS Intel (x86_64) | 能编译链接出可执行文件，**未在 Intel 机器上实际运行过** |
-| Windows x64 | CI 有构建任务，**尚未验证** |
+| Windows x64 | 已在 Windows 10 上安装、打开、做过基本操作；CI 构建与单元测试通过。**没有长期使用，深层功能（指标、血缘、AI 分析）未逐项试过** |
+| macOS Intel (x86_64) | 能构建出 Mach-O x86_64 并打包，**未在 Intel 机器上运行过** |
 | Linux | 未做 |
 
 ## 功能

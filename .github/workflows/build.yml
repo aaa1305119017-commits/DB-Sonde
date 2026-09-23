@@ -13,6 +13,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# 同一分支的新推送自动取消还在排队/运行的旧构建。三平台每个都要编 661 个
+# crate,连推几次就能把自己的 runner 配额堵死 —— 踩过:7 轮同时排队,
+# 最新那轮反而一直上不去。tag 不参与取消,发布不能被后来的推送打断。
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   build:
     name: ${{ matrix.label }}
