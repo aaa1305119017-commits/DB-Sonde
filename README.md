@@ -18,8 +18,15 @@
 版本说明和 SHA-256 校验文件见 [Releases](https://github.com/aaa1305119017-commits/DB-Sonde/releases/tag/v0.51.13)。
 
 > [!NOTE]
-> 当前为 Beta，已验证平台为 macOS Apple Silicon，Windows / Linux 尚未验证。
-> SQL 执行和表格编辑可以修改数据库，写操作请先在测试库验证。
+> 当前为 Beta。各平台的验证程度不同，见下表；SQL 执行和表格编辑可以修改数据库，
+> 写操作请先在测试库验证。
+
+| 平台 | 验证程度 |
+| --- | --- |
+| macOS Apple Silicon | 日常使用 |
+| macOS Intel (x86_64) | 能编译链接出可执行文件，**未在 Intel 机器上实际运行过** |
+| Windows x64 | CI 有构建任务，**尚未验证** |
+| Linux | 未做 |
 
 ## 功能
 
@@ -69,6 +76,22 @@ Rust 测试：
 ```sh
 cargo test --manifest-path src-tauri/Cargo.toml --lib
 ```
+
+### 跨平台构建
+
+`.github/workflows/build.yml` 在三个原生 runner 上构建：macOS Apple Silicon、
+macOS Intel、Windows x64，产物上传为 workflow artifact。
+
+在本机为另一个 macOS 架构构建：
+
+```sh
+rustup target add x86_64-apple-darwin
+npx tauri build --target x86_64-apple-darwin
+```
+
+**Windows 必须在 Windows 上构建。** 依赖链里的 `aws-lc-sys` 和 `ring` 含 C 代码，
+需要 Windows SDK 头文件，从 macOS 交叉编译会在 `windows.h` / `stdlib.h` 处失败。
+这是交叉编译 C 的固有限制，不是配置问题。
 
 ### 可选运行时
 

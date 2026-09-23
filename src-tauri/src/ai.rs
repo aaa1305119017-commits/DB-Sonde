@@ -56,11 +56,18 @@ fn models_dir() -> PathBuf {
     home().join(".db-sonde").join("models")
 }
 
+/// Windows 上可执行文件带 .exe —— 拼路径的地方都得跟着变,否则在 Windows
+/// 上永远找不到已经装好的 llama-server(而且是静默找不到,只报"未安装")。
+#[cfg(windows)]
+const LLAMA_EXE: &str = "llama-server.exe";
+#[cfg(not(windows))]
+const LLAMA_EXE: &str = "llama-server";
+
 /// Resolve `llama-server`: the copy bundled in app resources, an env override,
-/// `~/.db-sonde/bin`, then the usual Homebrew / system locations.
+/// `~/.db-sonde/bin`, then the platform's usual install locations.
 fn resolve_binary(resource: Option<&Path>) -> Option<PathBuf> {
     if let Some(dir) = resource {
-        let bundled = dir.join("binaries/llama/llama-server");
+        let bundled = dir.join("binaries/llama").join(LLAMA_EXE);
         if bundled.exists() {
             return Some(bundled);
         }
@@ -71,16 +78,22 @@ fn resolve_binary(resource: Option<&Path>) -> Option<PathBuf> {
             return Some(p);
         }
     }
-    for candidate in [
-        home().join(".db-sonde/bin/llama-server"),
+    let mut candidates = vec![home().join(".db-sonde").join("bin").join(LLAMA_EXE)];
+    #[cfg(target_os = "macos")]
+    candidates.extend([
         PathBuf::from("/opt/homebrew/bin/llama-server"),
         PathBuf::from("/usr/local/bin/llama-server"),
-    ] {
-        if candidate.exists() {
-            return Some(candidate);
-        }
+    ]);
+    #[cfg(target_os = "linux")]
+    candidates.extend([
+        PathBuf::from("/usr/local/bin/llama-server"),
+        PathBuf::from("/usr/bin/llama-server"),
+    ]);
+    #[cfg(windows)]
+    if let Some(dir) = std::env::var_os("LOCALAPPDATA") {
+        candidates.push(PathBuf::from(dir).join("llama.cpp").join(LLAMA_EXE));
     }
-    None
+    candidates.into_iter().find(|c| c.exists())
 }
 
 /// Pick a chat/coder GGUF from the models dir, skipping embedding models.

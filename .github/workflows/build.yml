@@ -1,0 +1,79 @@
+# 三平台构建。Windows 只能在 Windows 上编译 —— aws-lc-sys / ring 是 C 依赖,
+# 从 macOS 跨编译会因为找不到 windows.h 而失败,所以这里靠各自的原生 runner。
+#
+# 产物是**精简版**:本地 AI(llama.cpp)和 Python 工作台的运行时体积大、不进
+# 仓库,CI 不打包它们。应用会正常启动,那两个功能提示缺运行时,其余都能用。
+# 要带运行时的包,见 README 的「可选的内置运行时」。
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS (Apple Silicon)
+            os: macos-14
+            target: aarch64-apple-darwin
+          - label: macOS (Intel)
+            os: macos-13
+            target: x86_64-apple-darwin
+          - label: Windows (x64)
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.target }}
+
+      - run: npm ci
+
+      # 守卫跑一次就够(和平台无关),放在 Apple Silicon 那条上。
+      # 其余平台用 --no-check 跳过,避免三倍时间。
+      - name: 守卫与类型检查
+        if: matrix.target == 'aarch64-apple-darwin'
+        run: npm run check
+
+      - name: 前端构建
+        run: npx vite build
+
+      - name: Rust 单元测试
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib --target ${{ matrix.target }}
+
+      # beforeBuildCommand 默认是 `npm run build`,会把 50 套守卫再跑一遍。
+      # 前端上一步已经构建过,所以用 tauri.ci.conf.json 把它置空。
+      # 写成文件而不是 --config '{...}':内联 JSON 在 Windows 的 PowerShell
+      # 里引号规则不同,会被拆坏。
+      - name: 应用构建
+        run: npx tauri build --target ${{ matrix.target }} --config tauri.ci.conf.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: db-sonde-${{ matrix.target }}
+          path: |
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.app
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
+          if-no-files-found: error
