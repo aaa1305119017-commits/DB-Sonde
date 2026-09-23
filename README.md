@@ -56,6 +56,49 @@ npm run install:local      # macOS：构建并装进 /Applications（不会自�
 
 `npm run dev` 是纯浏览器预览，用的是模拟数据，不连真库。
 
+开源版使用独立的应用标识 `com.u35.dbsonde`，不会读取或迁移旧 Sonde
+（`com.u35.sonde`）的连接、凭据和工作区。开发运行与打包安装遵循相同规则：
+首次打开连接列表为空，添加连接后也只在手动点击连接时连库；重启或恢复页面不会自动连接。
+macOS 配置目录为 `~/Library/Application Support/com.u35.dbsonde/`，
+本地模型、Python 运行时和脚本工作区存放在 `~/.db-sonde/`。
+
+### 在全新 macOS 上安装
+
+目前只验证过 Apple Silicon（M 系列芯片）。以下使用 Homebrew，适用于 macOS 14 及更新版本。
+
+1. 打开终端，安装 Xcode Command Line Tools，并等待安装完成：
+
+   ```sh
+   xcode-select --install
+   ```
+
+2. 按 [Homebrew 官网](https://brew.sh/)安装 Homebrew，执行安装完成后显示的
+   `Next steps`，然后安装构建工具：
+
+   ```sh
+   brew install node rust
+   ```
+
+3. 下载源码并安装应用：
+
+   ```sh
+   git clone https://github.com/aaa1305119017-commits/DB-Sonde.git
+   cd DB-Sonde
+   npm ci
+   npm run install:local
+   ```
+
+   首次编译耗时较长。成功后应用位于 `/Applications/DB Sonde.app`，以后可从“应用程序”打开：
+
+   ```sh
+   open "/Applications/DB Sonde.app"
+   ```
+
+首次打开应显示空连接列表。可以手动创建本地 SQLite 演示库体验功能，或添加自己的数据库；
+演示库不会连接外部服务器。基础安装不包含本地 AI 模型和 Python 运行时，按下一节自行添加。
+
+平台依赖说明见 [Tauri macOS 构建前置条件](https://v2.tauri.app/start/prerequisites/#macos)。
+
 ### 可选的内置运行时
 
 本地 AI（llama.cpp）和 Python 工作台需要两份体积较大的运行时，它们不在仓库里，
@@ -97,7 +140,7 @@ cargo test --manifest-path src-tauri/Cargo.toml --lib
 - 表格改单元格带完整主键和旧值做并发检查，批量失败回滚该批。
   MySQL 非事务表没有回滚保证；Oracle / ClickHouse 批量语句可能部分成功。
 - 超出 JS 安全整数范围的整数和 DECIMAL 以字符串传输，避免主键和金额失真。
-- Python 工作台限制在 `~/.sonde/workspace`，拒绝符号链接。但**它不是沙箱** ——
+- Python 工作台限制在 `~/.db-sonde/workspace`，拒绝符号链接。但**它不是沙箱** ——
   你运行的脚本拥有你账户的全部权限。
 
 ## 目录

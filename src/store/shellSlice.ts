@@ -51,7 +51,7 @@ export const createShellSlice: ShellSlice = (set, get) => ({
         document.documentElement.lang = get().language;
         try {
             await get().refreshConnections();
-            void get().autoConnectSaved().catch(error => get().showToast({ kind: "warn", text: `自动连接失败：${String(error)}` }));
+            // Loading saved profiles must never initiate a database connection.
         }
         catch (e) {
             // No backend available (e.g. running the frontend outside Tauri).

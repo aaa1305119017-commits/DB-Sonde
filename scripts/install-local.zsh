@@ -15,7 +15,7 @@ if ! command -v cargo >/dev/null 2>&1 && [[ -x "$rust_bin/cargo" ]]; then
 fi
 
 require_app_closed() {
-  if pgrep -x sonde >/dev/null 2>&1; then
+  if pgrep -x db-sonde >/dev/null 2>&1; then
     print -u2 "DB Sonde is running. Save your work and quit it before installing the update."
     exit 1
   fi

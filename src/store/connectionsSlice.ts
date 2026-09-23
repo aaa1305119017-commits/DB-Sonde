@@ -16,7 +16,6 @@ type ConnectionsSlice = AppSlice<
   | "openDialog"
   | "closeDialog"
   | "refreshConnections"
-  | "autoConnectSaved"
   | "deleteConnection"
   | "connect"
   | "rememberSessionPassword"
@@ -27,9 +26,7 @@ type ConnectionsSlice = AppSlice<
   | "rollbackSession"
 >;
 
-export const createConnectionsSlice: ConnectionsSlice = (set, get) => {
-  let autoConnectStarted = false;
-  return ({
+export const createConnectionsSlice: ConnectionsSlice = (set, get) => ({
     connections: [],
     meta: {},
     databases: {},
@@ -72,25 +69,6 @@ export const createConnectionsSlice: ConnectionsSlice = (set, get) => {
                 tab.connId && !live.has(tab.connId))
                 get().closeTab(tab.id, true);
     },
-    async autoConnectSaved() {
-        // One launch attempt per store, including React StrictMode's repeated initialization.
-        if (autoConnectStarted) return;
-        autoConnectStarted = true;
-        const pending = get().connections.filter(c => c.kind !== "sqlite").map(c => ({ id: c.id, name: c.name }));
-        const failures: string[] = [];
-        const worker = async () => {
-            while (pending.length) {
-                const next = pending.shift()!;
-                if (!get().connections.some(c => c.id === next.id) || get().meta[next.id] || get().connecting[next.id]) continue;
-                try { await get().connect(next.id, null, { automatic: true }); }
-                catch { failures.push(next.name); }
-            }
-        };
-        await Promise.all(Array.from({ length: Math.min(3, pending.length) }, worker));
-        if (failures.length) get().showToast({ kind: "warn", text: get().language === "zh-CN"
-            ? `自动连接未成功：${failures.join("、")}。可手动连接以检查网络或更新密码。`
-            : `Could not auto-connect: ${failures.join(", ")}. Connect manually to check the network or update credentials.` });
-    },
     async deleteConnection(id) {
         await api.deleteConnection(id);
         sessionPasswords.delete(id);
@@ -107,23 +85,20 @@ export const createConnectionsSlice: ConnectionsSlice = (set, get) => {
         await get().refreshConnections();
         get().showToast({ kind: "info", text: translate(get().language, "connection.removed") });
     },
-    async connect(id, password, options) {
-        const automatic = options?.automatic === true;
+    async connect(id, password) {
         const config = get().connections.find((item) => item.id === id);
         if (!config) {
             // The connection was deleted. Returning silently makes the button in the
             // stranded-tab placeholder look dead — nothing happens, no explanation.
-            // Auto-connect passes through quietly; it has no user waiting on a click.
-            if (!automatic)
-                get().showToast({ kind: "error", text: translate(get().language, "connection.missing") });
+            get().showToast({ kind: "error", text: translate(get().language, "connection.missing") });
             return;
         }
         const needsPassword = config.kind !== "sqlite";
-        if (get().connecting[id] || automatic && get().meta[id])
+        if (get().connecting[id])
             return;
         if (password != null)
             sessionPasswords.set(id, password);
-        const sessionPassword = !automatic && needsPassword ? (sessionPasswords.get(id) ?? null) : null;
+        const sessionPassword = needsPassword ? (sessionPasswords.get(id) ?? null) : null;
         set((s) => ({ connecting: { ...s.connecting, [id]: true } }));
         try {
             const meta = await api.connect(id, sessionPassword);
@@ -148,7 +123,7 @@ export const createConnectionsSlice: ConnectionsSlice = (set, get) => {
                     .then((dbs) => set((s) => ({ databases: { ...s.databases, [id]: dbs } })))
                     .catch(() => { });
             }
-            if (!automatic || meta.credentialWarning) get().showToast({
+            get().showToast({
                 kind: meta.credentialWarning ? "warn" : "success",
                 text: meta.credentialWarning ?? translate(get().language, "connection.success", {
                     version: meta.serverVersion || meta.kind,
@@ -158,12 +133,6 @@ export const createConnectionsSlice: ConnectionsSlice = (set, get) => {
         catch (e) {
             if (needsPassword)
                 sessionPasswords.delete(id);
-            // The backend loads the encrypted credential before contacting the database.
-            // Missing credentials never become a login prompt during startup.
-            if (automatic) {
-                if (String(e).includes("CREDENTIAL_REQUIRED")) return;
-                throw e;
-            }
             if (String(e).includes("CREDENTIAL_REQUIRED") || String(e).includes("CREDENTIAL_REJECTED")) {
                 set({ passwordPromptId: id });
                 if (String(e).includes("CREDENTIAL_REJECTED"))
@@ -234,4 +203,3 @@ export const createConnectionsSlice: ConnectionsSlice = (set, get) => {
         }
     }
 });
-};

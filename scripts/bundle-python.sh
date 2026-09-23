@@ -3,7 +3,7 @@
 #
 # Produces  src-tauri/binaries/python-runtime.tar.gz  — a relocatable CPython
 # (python-build-standalone) with the core data-work packages pre-installed.
-# At first launch the app extracts this into ~/.sonde/runtime/python so
+# At first launch the app extracts this into ~/.db-sonde/runtime/python so
 # users never touch pip / virtualenvs.  Bundling a single tarball (rather than
 # loose files) sidesteps Tauri's resource copier mangling symlinks + exec bits.
 #

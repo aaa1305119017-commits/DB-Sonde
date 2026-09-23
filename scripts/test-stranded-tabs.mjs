@@ -46,11 +46,7 @@ try {
   assert.equal(toasts[0].kind, 'error');
   assert(toasts[0].text.includes('删除'), `unexpected message: ${toasts[0].text}`);
 
-  // Auto-connect runs without a user waiting on a click and must stay quiet.
-  await useApp.getState().connect('deleted', null, { automatic: true });
-  assert.equal(toasts.length, 1, 'automatic connection attempts do not raise a toast');
-
-  console.log('stranded tabs: 7 assertions passed');
+  console.log('stranded tabs: cleanup and missing-connection feedback passed');
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }

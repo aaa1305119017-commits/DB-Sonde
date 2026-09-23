@@ -2,7 +2,7 @@
 //!
 //! A relocatable CPython + core data packages ships as a single tarball in the
 //! app's resources (see scripts/bundle-python.sh). On first use we extract it
-//! into ~/.sonde/runtime/python so users never configure an environment.
+//! into ~/.db-sonde/runtime/python so users never configure an environment.
 //! `python_run` spawns a script and streams stdout/stderr back to the UI via
 //! `python://event`; a run can be stopped. Simple workspace file CRUD backs the
 //! "文件 · Python 脚本" list.
@@ -102,7 +102,7 @@ fn home() -> PathBuf {
     std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"))
 }
 fn runtime_root() -> PathBuf {
-    home().join(".sonde/runtime")
+    home().join(".db-sonde/runtime")
 }
 fn python_dir() -> PathBuf {
     runtime_root().join("python")
@@ -116,7 +116,7 @@ fn workspace_dir() -> PathBuf {
     #[cfg(test)]
     { TEST_WORKSPACE.with(|p| p.borrow().clone().expect("workspace tests must install an isolated fixture")) }
     #[cfg(not(test))]
-    { home().join(".sonde/workspace") }
+    { home().join(".db-sonde/workspace") }
 }
 fn bundled_tar(app: &tauri::AppHandle) -> Option<PathBuf> {
     let dir = app.path().resource_dir().ok()?;
@@ -530,7 +530,7 @@ pub fn python_stop(rt: tauri::State<'_, PyRuntime>, run_id: String) -> Result<()
     Ok(())
 }
 
-// ---- workspace file CRUD (scoped to ~/.sonde/workspace) ----
+// ---- workspace file CRUD (scoped to ~/.db-sonde/workspace) ----
 
 #[derive(Serialize, Debug)]
 pub struct PyFile {

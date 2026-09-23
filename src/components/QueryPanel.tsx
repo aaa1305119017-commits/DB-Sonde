@@ -2,7 +2,7 @@ import {
   Loader2,
   TableProperties
 } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useI18n } from "../hooks/useI18n";
 import { useApp } from "../store/appStore";
 import DatabaseBrowser from "./DatabaseBrowser";
@@ -20,17 +20,11 @@ const AnalysisWorkspace = lazy(() => import("../features/agent/AnalysisWorkspace
 export default function QueryPanel() {
   const tabs = useApp(s => s.tabs);
   const activeTabId = useApp(s => s.activeTabId);
-  const connections = useApp(s => s.connections);
   const [visited, setVisited] = useState<Set<string>>(() => new Set(activeTabId ? [activeTabId] : []));
-  const attempted = useRef(new Set<string>());
   useEffect(() => {
     if (activeTabId) setVisited(previous => new Set([...previous, activeTabId]));
-    const current = useApp.getState();
-    const tab = current.tabs.find(t => t.id === activeTabId);
-    if (!tab || !["query", "table", "database", "routine"].includes(tab.kind) || !connections.some(c => c.id === tab.connId) || current.meta[tab.connId] || attempted.current.has(tab.connId)) return;
-    attempted.current.add(tab.connId);
-    void current.connect(tab.connId).catch(() => { });
-  }, [activeTabId, connections]);
+    // Restoring or switching tabs is not consent to connect to a database.
+  }, [activeTabId]);
   useEffect(() => {
     const save = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") return;

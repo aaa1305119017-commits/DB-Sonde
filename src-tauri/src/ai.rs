@@ -53,11 +53,11 @@ fn home() -> PathBuf {
 
 /// Where the built-in model(s) live.
 fn models_dir() -> PathBuf {
-    home().join(".sonde").join("models")
+    home().join(".db-sonde").join("models")
 }
 
 /// Resolve `llama-server`: the copy bundled in app resources, an env override,
-/// `~/.sonde/bin`, then the usual Homebrew / system locations.
+/// `~/.db-sonde/bin`, then the usual Homebrew / system locations.
 fn resolve_binary(resource: Option<&Path>) -> Option<PathBuf> {
     if let Some(dir) = resource {
         let bundled = dir.join("binaries/llama/llama-server");
@@ -72,7 +72,7 @@ fn resolve_binary(resource: Option<&Path>) -> Option<PathBuf> {
         }
     }
     for candidate in [
-        home().join(".sonde/bin/llama-server"),
+        home().join(".db-sonde/bin/llama-server"),
         PathBuf::from("/opt/homebrew/bin/llama-server"),
         PathBuf::from("/usr/local/bin/llama-server"),
     ] {

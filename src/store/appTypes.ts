@@ -176,9 +176,8 @@ export interface AppState {
     openDialog: (editing?: ConnectionConfig) => void;
     closeDialog: () => void;
     refreshConnections: () => Promise<void>;
-    autoConnectSaved: () => Promise<void>;
     deleteConnection: (id: string) => Promise<void>;
-    connect: (id: string, password?: string | null, options?: { automatic?: boolean }) => Promise<void>;
+    connect: (id: string, password?: string | null) => Promise<void>;
     disconnect: (id: string) => Promise<void>;
     setAutocommit: (connId: string, enabled: boolean, database?: string) => Promise<void>;
     commitSession: (connId: string) => Promise<void>;

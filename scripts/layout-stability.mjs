@@ -134,7 +134,7 @@ function readLocal(field) {
   try {
     const py = `
 import sqlite3,json,glob
-p=glob.glob('${process.env.HOME}/Library/WebKit/com.u35.sonde/WebsiteData/Default/*/*/LocalStorage/localstorage.sqlite3')[0]
+p=glob.glob('${process.env.HOME}/Library/WebKit/com.u35.dbsonde/WebsiteData/Default/*/*/LocalStorage/localstorage.sqlite3')[0]
 v=sqlite3.connect(p).execute("select value from ItemTable where key='ai.config'").fetchone()[0].decode('utf-16-le')
 print(json.loads(v)['cloud'].get(${JSON.stringify(field)},''))`;
     return execFileSync("python3", ["-c", py], { encoding: "utf8" }).trim();

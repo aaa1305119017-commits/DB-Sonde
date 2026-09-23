@@ -55,8 +55,8 @@ const zhCN = {
     selectionHint: "已选中 {n} 字",
     wholeDoc: "整段",
     engineDesktopOnly: "内置引擎需在桌面版(Tauri)中运行;网页预览下请用「本地端点」或「云端 API」。",
-    engineBinaryMissing: "未找到 llama-server。请安装 llama.cpp(brew install llama.cpp),或把二进制放到 ~/.sonde/bin/。",
-    engineModelMissing: "未找到模型。把 GGUF 放到 ~/.sonde/models/(推荐 Qwen2.5-Coder-7B-Q4_K_M)。",
+    engineBinaryMissing: "未找到 llama-server。请安装 llama.cpp(brew install llama.cpp),或把二进制放到 ~/.db-sonde/bin/。",
+    engineModelMissing: "未找到模型。把 GGUF 放到 ~/.db-sonde/models/(推荐 Qwen2.5-Coder-7B-Q4_K_M)。",
     engineModelFound: "模型:{name}({size})",
     engineStart: "启动内置引擎",
     engineStarting: "正在启动(加载模型可能要十几秒)…",
@@ -65,7 +65,7 @@ const zhCN = {
     engineStartFailed: "启动失败:{err}",
     modelDownload: "一键下载内置模型 (Qwen2.5-Coder-7B · 约 4.7GB)",
     modelDownloading: "下载中… {pct}%（{done}/{total}）",
-    modelDownloadFailed: "下载失败:{err}。可重试(支持断点续传)或手动放入 ~/.sonde/models/。",
+    modelDownloadFailed: "下载失败:{err}。可重试(支持断点续传)或手动放入 ~/.db-sonde/models/。",
     modelDownloadDone: "模型已下载,可以启动内置引擎了。",
 };
 
@@ -126,8 +126,8 @@ const en: Record<keyof typeof zhCN, string> = {
     selectionHint: "{n} chars selected",
     wholeDoc: "whole editor",
     engineDesktopOnly: "The built-in engine runs in the desktop (Tauri) build; in the web preview use Local or Cloud.",
-    engineBinaryMissing: "llama-server not found. Install llama.cpp (brew install llama.cpp) or place the binary in ~/.sonde/bin/.",
-    engineModelMissing: "No model found. Put a GGUF in ~/.sonde/models/ (recommended: Qwen2.5-Coder-7B-Q4_K_M).",
+    engineBinaryMissing: "llama-server not found. Install llama.cpp (brew install llama.cpp) or place the binary in ~/.db-sonde/bin/.",
+    engineModelMissing: "No model found. Put a GGUF in ~/.db-sonde/models/ (recommended: Qwen2.5-Coder-7B-Q4_K_M).",
     engineModelFound: "Model: {name} ({size})",
     engineStart: "Start built-in engine",
     engineStarting: "Starting (loading the model can take ~10s)…",
@@ -136,7 +136,7 @@ const en: Record<keyof typeof zhCN, string> = {
     engineStartFailed: "Start failed: {err}",
     modelDownload: "Download built-in model (Qwen2.5-Coder-7B · ~4.7GB)",
     modelDownloading: "Downloading… {pct}% ({done}/{total})",
-    modelDownloadFailed: "Download failed: {err}. Retry (resumable) or place it manually in ~/.sonde/models/.",
+    modelDownloadFailed: "Download failed: {err}. Retry (resumable) or place it manually in ~/.db-sonde/models/.",
     modelDownloadDone: "Model downloaded — you can start the built-in engine now.",
 };
 
