@@ -8,6 +8,9 @@
 (function () {
   "use strict";
   var DATA = window.__DASH__ || { widgets: [] };
+  /* tooltip 里的外来文本转义 —— 实现在 tooltipText.runtime.js,由 htmlExport
+     内联在本脚本之前。和看板共用同一份,免得修了一处漏另一处。 */
+  var esc = globalThis.__DASH_TIP__.esc;
   var echarts = window.echarts;
   var PALETTE = ["#4d8dff", "#2ed6a1", "#ffb547", "#a98bff", "#ff6b8a", "#35c6f4", "#ff7a45", "#66e0e5"];
   var ROW = 96; // 每个网格行的像素高度(近似在线画布)
@@ -300,7 +303,8 @@
     var secondarySummary = function (rows, sv, label) {
       if (!displaySecondary.length) return "";
       var scoped = sv ? ((label != null && (byLabelSeries[label] || {})[sv]) || rows.filter(function (r) { return seriesKey(r) === sv; })) : rows;
-      return displaySecondary.map(function (sm) { return sm.name + " " + metricValue(sm, aggregate(scoped, sm)); }).join(" · ");
+      // 返回的是**已转义的** HTML 片段,调用方直接拼,不要再 esc 一次。
+      return displaySecondary.map(function (sm) { return esc(sm.name) + " " + esc(metricValue(sm, aggregate(scoped, sm))); }).join(" · ");
     };
 
     if (type === "pie") {
@@ -326,8 +330,8 @@
         tooltip: { trigger: "item", formatter: function (p) {
           var label = String(p.name == null ? "" : p.name);
           var extra = secondarySummary(grouped[label] || [], "");
-          var head = (p.marker || "") + " " + label + ": <b>" + metricValue(activePie, numberValue(p.value)) + "</b>"
-            + (p.percent != null ? " <span style='opacity:.6'>" + p.percent + "%</span>" : "");
+          var head = (p.marker || "") + " " + esc(label) + ": <b>" + esc(metricValue(activePie, numberValue(p.value))) + "</b>"
+            + (p.percent != null ? " <span style='opacity:.6'>" + esc(p.percent) + "%</span>" : "");
           return extra ? head + "<br/><span style='opacity:.6'>" + extra + "</span>" : head;
         } },
         legend: legendPos === "left" ? { show: w.options.showLegend, left: 0, top: "middle", orient: "vertical", textStyle: { color: muted } }
@@ -392,12 +396,12 @@
       var arr = Array.isArray(params) ? params : [params];
       var x = String(arr[0] && (arr[0].axisValue != null ? arr[0].axisValue : arr[0].name) || "");
       var rows = grouped[x] || [];
-      var lines = ["<div style='font-weight:600;margin-bottom:2px'>" + x + "</div>"];
+      var lines = ["<div style='font-weight:600;margin-bottom:2px'>" + esc(x) + "</div>"];
       arr.forEach(function (p) {
         var m = seriesMetrics[p.seriesIndex];
         var val = m ? metricValue(m, numberValue(p.value)) : fmt(numberValue(p.value), 2, grouping);
         var extra = secondarySummary(rows, seriesCatOf[p.seriesIndex] || "", x);
-        lines.push((p.marker || "") + " " + (p.seriesName || "") + ": <b>" + val + "</b>" + (extra ? " <span style='opacity:.6'>· " + extra + "</span>" : ""));
+        lines.push((p.marker || "") + " " + esc(p.seriesName || "") + ": <b>" + esc(val) + "</b>" + (extra ? " <span style='opacity:.6'>· " + extra + "</span>" : ""));
       });
       return lines.join("<br/>");
     };

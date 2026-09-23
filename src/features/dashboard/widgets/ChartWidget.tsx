@@ -1,4 +1,5 @@
 import { PIE_LABEL, pieRadii } from "../pieGeometry";
+import { escapeHtml } from "../tooltipText";
 import { useCallback, useEffect, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import { ChevronLeft } from "lucide-react";
@@ -266,23 +267,24 @@ export default function ChartWidget(props: Props) {
   const seriesCats = seriesValues.length ? seriesValues : [""];
   const seriesMetrics = [...displayMetrics, ...(dualAxis ? displaySecondary : [])].flatMap((m) => seriesCats.map(() => m));
   const seriesCatOf = [...displayMetrics, ...(dualAxis ? displaySecondary : [])].flatMap(() => seriesCats);
-  /** 某个系列值下的副指标摘要:`订单量 18,164单`,多个副指标用 · 连接。空则返回 ""。 */
+  /** 某个系列值下的副指标摘要:`订单量 18,164单`,多个副指标用 · 连接。空则返回 ""。
+   *  **返回的是已转义的 HTML 片段**,调用方直接拼,不要再 escapeHtml 一次。 */
   const secondarySummary = (label: string, seriesValue: string) => {
     if (!displaySecondary.length) return "";
     const scoped = rowsOf(label, seriesValue);
-    return displaySecondary.map((sm) => `${sm.name} ${metricValue(sm, aggregate(scoped, sm))}`).join(" · ");
+    return displaySecondary.map((sm) => `${escapeHtml(sm.name)} ${escapeHtml(metricValue(sm, aggregate(scoped, sm)))}`).join(" · ");
   };
   type TipParam = { axisValue?: string; name?: string; marker?: string; seriesName?: string; seriesIndex: number; value: number; percent?: number };
   // 紧凑排版:副指标并进它所属系列那一行,不再另起一整段(否则 9 条线会撑成 18 行)。
   const tooltipFormatter = (params: TipParam | TipParam[]) => {
     const arr = Array.isArray(params) ? params : [params];
     const x = String(arr[0]?.axisValue ?? arr[0]?.name ?? "");
-    const lines = [`<div style="font-weight:600;margin-bottom:2px">${x}</div>`];
+    const lines = [`<div style="font-weight:600;margin-bottom:2px">${escapeHtml(x)}</div>`];
     arr.forEach((p) => {
       const m = seriesMetrics[p.seriesIndex];
       const val = m ? metricValue(m, numberValue(p.value), dualAxis && p.seriesIndex >= displayMetrics.length * seriesCats.length ? undefined : nf) : formatNumber(numberValue(p.value), 2, grouping);
       const extra = dualAxis ? "" : secondarySummary(x, seriesCatOf[p.seriesIndex] ?? "");
-      lines.push(`${p.marker ?? ""} ${p.seriesName ?? ""}: <b>${val}</b>${extra ? ` <span style="opacity:.6">· ${extra}</span>` : ""}`);
+      lines.push(`${p.marker ?? ""} ${escapeHtml(p.seriesName ?? "")}: <b>${escapeHtml(val)}</b>${extra ? ` <span style="opacity:.6">· ${extra}</span>` : ""}`);
     });
     return lines.join("<br/>");
   };
@@ -307,7 +309,7 @@ export default function ChartWidget(props: Props) {
   const pieTooltipFormatter = (p: TipParam) => {
     const label = String(p.name ?? "");
     const extra = metricComposition ? "" : pieData.some((slice) => slice.name === label && slice.isOther) ? "包含其余全部分组" : secondarySummary(label, "");
-    const head = `${p.marker ?? ""} ${label}: <b>${metricValue(activePieMetric, numberValue(p.value))}</b>${p.percent != null ? ` <span style="opacity:.6">${p.percent}%</span>` : ""}`;
+    const head = `${p.marker ?? ""} ${escapeHtml(label)}: <b>${escapeHtml(metricValue(activePieMetric, numberValue(p.value)))}</b>${p.percent != null ? ` <span style="opacity:.6">${escapeHtml(p.percent)}%</span>` : ""}`;
     return extra ? `${head}<br/><span style="opacity:.6">${extra}</span>` : head;
   };
 

@@ -8,6 +8,39 @@ import type { Endpoint } from "../types";
  * 「这个源的库名是空的」,而没人会想到是适配器之间走散了。 */
 
 /**
+ * 把连接串里的「凭据@主机」整段去掉。**parseJdbc 和 redactJdbc 都先过这一道。**
+ *
+ * 分开认会走散,而且已经走散过一次:redactJdbc 认得 `//user:pw@`,parseJdbc 不认,
+ * 于是 `jdbc:postgresql://root:pw@pg/db` 的 host 被存成了 `root:pw@pg` —— 口令
+ * 绕开脱敏,跟着 ETL 源一起落进 localStorage。Oracle thin 的 `user/pw@host`
+ * 写法则两边都不认。所以这里只留一个入口,想认错也得两边一起错。
+ *
+ * 认这几种:
+ *   //user:pw@host   //user@host           (mysql / postgres / hive …)
+ *   :thin:user/pw@host   :oci:user/pw@host (oracle)
+ */
+export function stripCredentials(url: string): string {
+  if (typeof url !== "string" || !url) return url;
+  return url
+    // jdbc:oracle:thin:scott/tiger@//host → jdbc:oracle:thin:@//host
+    .replace(/(:(?:thin|oci8?):)[^@\s]*@/i, "$1@")
+    // //user:pw@host 和 //user@host → //host
+    .replace(/\/\/[^/@\s]*@/, "//");
+}
+
+/**
+ * 剥 **host 字段**里的凭据 —— 那是裸的 `host:port`,不是 URL,所以
+ * stripCredentials 的 `//user@` 正则匹配不上(老数据迁移时踩到过)。
+ *
+ * 主机名里不可能出现 `@`,所以只要有 `@`,前面那段就是凭据,整段丢掉。
+ */
+export function stripHostCredentials(host: string): string {
+  if (typeof host !== "string" || !host) return host;
+  const at = host.lastIndexOf("@");
+  return at === -1 ? host : host.slice(at + 1);
+}
+
+/**
  * 从 jdbcUrl 里抠出 host:port 和库名。**不碰用户名口令** —— 那些在别的字段里,
  * 抠进来会顺着血缘图一路显示出去。
  *
@@ -22,6 +55,7 @@ import type { Endpoint } from "../types";
  */
 export function parseJdbc(url: string): { host?: string; database?: string } {
   if (typeof url !== "string") return {};
+  url = stripCredentials(url);
   // Oracle 两种写法都要:@//host:port/service 和 @host:port:sid
   const ora = url.match(/@\/?\/?([^/:\s]+:\d+)[/:]([\w$.]+)/);
   if (/oracle/i.test(url) && ora) return { host: ora[1], database: ora[2] };
@@ -52,9 +86,7 @@ export function parseJdbc(url: string): { host?: string; database?: string } {
  */
 export function redactJdbc(url: string): string {
   if (typeof url !== "string" || !url) return url;
-  return url
-    // //user:pw@host → //host
-    .replace(/\/\/[^/@\s]*:[^/@\s]*@/, "//")
+  return stripCredentials(url)
     // ?user=x&password=y 这类参数里的敏感项
     .replace(/([?;&])\s*(password|passwd|pwd|user|username|uid|token|secret|accessKey|accessKeyId|accessKeySecret)\s*=[^&;\s]*/gi,
       (_m, sep: string, key: string) => `${sep}${key}=***`);

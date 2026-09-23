@@ -105,6 +105,30 @@ try {
      读源文件 —— 借 HTML 搜源码标识符只是压缩之前能凑合用。
      搜 CSS 类名、全局名、数据里的文字那些照旧搜 HTML:它们压缩后还在。 */
   const runtimeSource = readFileSync(resolve('src/features/dashboard/export/standalone.runtime.js'), 'utf8');
+  /* ── tooltip 转义:导出页和看板必须同一份 ──────────────────────────────
+     转义实现本身有真渲染测试(test-chart-quality 里拿真 option 上的 formatter
+     跑出字符串来比)。这儿要防的是**两边走散** —— 看板转了、导出页没转,
+     那就是同一个洞换个地方开。所以查两件事:
+       1. 共用的转义脚本真的被内联进导出页了(没有它,运行时取 esc 会直接报错);
+       2. 四个外来文本的落点在运行时源码里都套着 esc。
+     第 2 条是源码形状检查,证不了运行时行为 —— 但它能挡住"以后有人加一行
+     拼接忘了转义"这类回归,而那正是这个洞第一次出现的方式。 */
+  /* 别搜 `__DASH_TIP__` —— 运行时自己那句 `globalThis.__DASH_TIP__.esc` 里也有它,
+     脚本没内联照样搜得到(这条断言第一版就是这么废掉的,变异验证抓出来的)。
+     搜转义表本身:`&amp;` 只可能来自那份实现。 */
+  assert(html.includes('__DASH_TIP__=') || html.includes('__DASH_TIP__ ='),
+    '共用的 tooltip 转义脚本要内联进导出页,否则运行时取 esc 直接报错');
+  assert(html.includes('&amp;'), '转义表要真的打进页面里');
+  for (const [bad, good, what] of [
+    [/\+ x \+ "<\/div>"/, /esc\(x\)/, '分类名'],
+    [/\+ \(p\.seriesName \|\| ""\) \+/, /esc\(p\.seriesName \|\| ""\)/, '系列名'],
+    [/\+ " " \+ label \+/, /esc\(label\)/, '饼图扇区名'],
+    [/return sm\.name \+/, /esc\(sm\.name\)/, '副指标名'],
+  ]) {
+    assert(good.test(runtimeSource), `导出运行时的${what}没走转义`);
+    assert(!bad.test(runtimeSource), `导出运行时的${what}还有一处裸拼接`);
+  }
+
   // 运行时里那句「跳过容器和子组件」是这个 bug 的根:它一在,页面上就少半个看板。
   assert(!/w\.type === "container" \|\| w\.parentId/.test(runtimeSource), '导出运行时又把容器跳过了');
   assert(/renderContainer/.test(runtimeSource), '导出运行时要会渲染 Tab 容器');

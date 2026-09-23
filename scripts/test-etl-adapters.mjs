@@ -92,6 +92,67 @@ try {
     assert.equal(redactJdbc('jdbc:postgresql://root:Sonde123@pg/db'), 'jdbc:postgresql://pg/db', 'URL 里的 user:pw@ 也要抹');
     assert.equal(redactJdbc('jdbc:mysql://h/db?useSSL=false'), 'jdbc:mysql://h/db?useSSL=false', '别的参数不动');
     ok('jdbcUrl:口令抹掉,host 和库名留着');
+
+    /* 口令绕过脱敏的两条路,都真实存在过:
+     *   1. parseJdbc 不剥凭据,`//user:pw@host` 整段被当成 host 存进 localStorage
+     *      —— detail 那头抹得再干净也没用,host 字段把口令带出去了。
+     *   2. Oracle thin 的 `user/pw@host` 写法两个函数都不认。
+     * 所以现在只有 stripCredentials 一个入口,parseJdbc 和 redactJdbc 都先过它。 */
+    assert.deepEqual(parseJdbc('jdbc:postgresql://root:Sonde123@pg/db'), { host: 'pg', database: 'db' },
+      'host 里不许夹带凭据 —— Endpoint.host 的注释写着 never credentials');
+    assert.deepEqual(parseJdbc('jdbc:mysql://root@h:3306/db'), { host: 'h:3306', database: 'db' },
+      '只有用户名没口令也一样要剥');
+    assert.equal(redactJdbc('jdbc:oracle:thin:scott/tiger@//ora:1521/ORCLPDB'), 'jdbc:oracle:thin:@//ora:1521/ORCLPDB',
+      'Oracle thin 的 user/pw@ 写法');
+    assert.equal(redactJdbc('jdbc:oracle:thin:scott/tiger@ora:1521:sid1'), 'jdbc:oracle:thin:@ora:1521:sid1',
+      'Oracle 的 host:port:sid 写法');
+    assert.deepEqual(parseJdbc('jdbc:oracle:thin:scott/tiger@//ora:1521/ORCLPDB'), { host: 'ora:1521', database: 'ORCLPDB' },
+      '剥完凭据还得解析得出 host 和 service');
+    assert.equal(redactJdbc('jdbc:oracle:thin:@//ora:1521/ORCLPDB'), 'jdbc:oracle:thin:@//ora:1521/ORCLPDB',
+      '本来就没凭据的别被改坏(幂等)');
+    ok('jdbcUrl:host 字段和 Oracle 写法都不再漏口令');
+  }
+
+  // ── 已落盘数据的脱敏迁移 ────────────────────────────────────────────────
+  /* 解析那头修好了,只保护**以后**导入的。用户已经存在 localStorage 里的那些
+   * 带口令的源不会自己消失,而没人会为了清一个口令重导所有 ETL 源。
+   * 所以 etlStore 读盘时要过一遍,并且变了就立刻写回 —— 只在内存里改掉不算数,
+   * 盘上那份还在。 */
+  {
+    const storeFile = join(dir, 'store.cjs');
+    await build({
+      stdin: { contents: `export { useEtl } from './src/features/etl/etlStore';`,
+        resolveDir: resolve('.'), loader: 'ts' },
+      bundle: true, format: 'cjs', platform: 'node', outfile: storeFile, logLevel: 'silent',
+    });
+
+    const dirty = [{ id: 'src1', name: '老数据', jobs: [{
+      sources: [{ kind: 'db', host: 'root:Sonde123@pg', database: 'ods', table: 't',
+                  detail: 'jdbc:postgresql://root:Sonde123@pg/ods' }],
+      targets: [{ kind: 'db', host: 'ora:1521', database: 'DW', table: 'u',
+                  detail: 'jdbc:oracle:thin:scott/tiger@//ora:1521/DW' }],
+    }] }];
+
+    const writes = [];
+    globalThis.localStorage = {
+      getItem: (k) => (k === 'sonde.etlSources.v1' ? JSON.stringify(dirty) : null),
+      setItem: (k, v) => writes.push([k, v]),
+      removeItem: () => {},
+    };
+    const { useEtl } = createRequire(import.meta.url)(storeFile);
+    const job = useEtl.getState().sources[0].jobs[0];
+
+    assert.equal(job.sources[0].host, 'pg', '存着的 host 里的凭据要被抹掉');
+    assert.equal(job.sources[0].detail, 'jdbc:postgresql://pg/ods');
+    assert.equal(job.targets[0].detail, 'jdbc:oracle:thin:@//ora:1521/DW', 'Oracle 写法同样要迁移');
+    assert.equal(job.sources[0].table, 't', '除凭据外的字段一个都不能动');
+    assert.equal(job.targets[0].host, 'ora:1521', '本来就干净的 host 保持原样');
+
+    const written = writes.find(([k]) => k === 'sonde.etlSources.v1');
+    assert(written, '改完必须写回盘 —— 只在内存里干净不算数');
+    assert(!written[1].includes('Sonde123') && !written[1].includes('tiger'),
+      '写回盘的那份里不许再有口令');
+    ok('ETL 存储:已落盘的凭据会被迁移掉,并且写回磁盘');
   }
 
   // ── Kettle:.ktr 转换 ────────────────────────────────────────────────────

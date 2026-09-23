@@ -1,13 +1,39 @@
 import { assertStorageReadable, readStoredJson, writeStoredJson } from "../../lib/jsonStorage";
 import { create } from "zustand";
 import { nanoid } from "nanoid";
-import type { EtlKind, EtlSource, EtlFieldMapping } from "./types";
+import type { Endpoint, EtlKind, EtlSource, EtlFieldMapping } from "./types";
 import { getEtlAdapter } from "./adapters";
+import { redactJdbc, stripHostCredentials } from "./adapters/shared";
 
 const KEY = "sonde.etlSources.v1";
 
+/* 已落盘数据的脱敏迁移。
+ *
+ * 早先 parseJdbc 不剥凭据,`jdbc:postgresql://root:pw@pg/db` 的 host 被整段存成
+ * `root:pw@pg`;redactJdbc 又认不出 Oracle thin 的 `user/pw@host`,detail 里也
+ * 留着口令。解析那头已经修了,但**修解析救不了已经写进 localStorage 的那些** ——
+ * 用户不会为了清掉一个口令去重导所有 ETL 源。所以读的时候过一遍,变了就立刻写回。 */
+function scrub(list: EtlSource[]): { list: EtlSource[]; changed: boolean } {
+  let changed = false;
+  const endpoint = (e: Endpoint): Endpoint => {
+    const host = e.host ? stripHostCredentials(e.host) : e.host;
+    const detail = e.detail ? redactJdbc(e.detail) : e.detail;
+    if (host === e.host && detail === e.detail) return e;
+    changed = true;
+    return { ...e, ...(host !== undefined && { host }), ...(detail !== undefined && { detail }) };
+  };
+  const scrubbed = list.map(source => ({
+    ...source,
+    jobs: source.jobs.map(job => ({ ...job, sources: job.sources.map(endpoint), targets: job.targets.map(endpoint) })),
+  }));
+  return { list: changed ? scrubbed : list, changed };
+}
+
 function load(): EtlSource[] {
-  return readStoredJson(KEY, [], value => Array.isArray(value) && value.every(item => item && typeof item.id === "string" && Array.isArray(item.jobs)));
+  const stored = readStoredJson<EtlSource[]>(KEY, [], value => Array.isArray(value) && value.every(item => item && typeof item.id === "string" && Array.isArray(item.jobs)));
+  const { list, changed } = scrub(stored);
+  if (changed) persist(list);
+  return list;
 }
 function persist(list: EtlSource[]): void {
   writeStoredJson(KEY, list);

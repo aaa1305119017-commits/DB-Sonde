@@ -1,3 +1,4 @@
+import { stripHostCredentials, redactJdbc } from "./shared";
 import type { Endpoint, EtlAdapter, EtlJob, EtlFieldMapping } from "../types";
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 const string = (value: unknown, label: string): string => {
@@ -33,6 +34,11 @@ function endpoints(value: unknown, label: string, mapping?: EtlFieldMapping["end
             if (input[field] !== undefined && input[field] !== null)
                 endpoint[field] = string(input[field], `${label}.${field}`);
         }
+        /* 白名单挡得住没认出来的字段,挡不住**认出来的字段里夹带凭据** ——
+         * host 可以是 `root:pw@db`,detail 可以是一整条带 password= 的 jdbcUrl。
+         * 这两个是导入方给什么就存什么,所以在这儿过一道,和 jdbc 解析同一套规则。 */
+        if (endpoint.host) endpoint.host = stripHostCredentials(endpoint.host);
+        if (endpoint.detail) endpoint.detail = redactJdbc(endpoint.detail);
         if (kind === "db" && !endpoint.table && !endpoint.querySql)
             throw new Error(`${label}的数据库端点缺少表或查询`);
         if (kind === "file" && !endpoint.path)

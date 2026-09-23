@@ -93,5 +93,45 @@ try {
  assert.equal(m.pendingCoverage(plan,['stored'],[],[]).length,0);
  assert.equal(m.pendingCoverage(plan,[],[{area:'客户资产',action:'unavailable',reason:'查询失败'}],['stored']).length,0);
  const layout=m.refineAnalysisLayout({title:'构成',items:[{type:'pie',title:'渠道',metricIds:['dining','delivery'],dimensions:[],band:'structure',reason:'互斥渠道构成'}]},[{metricId:'dining',name:'线下',unit:'元',rollup:'sum'},{metricId:'delivery',name:'线上',unit:'元',rollup:'sum'}]);assert.equal(layout.items[0].type,'pie');
+
+ /* ── tooltip 不许执行脚本 ────────────────────────────────────────────────
+    ECharts 的 tooltip formatter 返回的是 HTML 字符串,而里面拼的分类名、系列名、
+    维度值、指标名全都来自数据库。一个名字叫 `<img src=x onerror=...>` 的分组
+    就能在别人悬浮时执行脚本,而桌面版同一个页面还握着原生命令调用能力。
+
+    测的是**真 option 上的 formatter 实际返回的字符串**,不是"有没有调转义函数"
+    —— 后者改坏了照样绿。 */
+ {
+  const XSS = '<img src=x onerror="alert(1)">';
+  const evil = {...main, key:'evil', name:`销售额${XSS}`, field:'sales', columnIndex:1};
+  /* 判据:把**我们自己生成**的那几个标签剥掉之后,不该再剩任何 `<`。
+     比"不含 <img"准 —— 转义后的文本里照样有 `onerror=` 这个子串(在 &lt;…&gt;
+     里,执行不了),按子串找会误报;而漏转义的任何标签都会在这里露出来。 */
+  const OURS = /<\/?(?:div|span|b|br)\b[^>]*\/?>/g;
+  const raw = (html) => {
+    const left = html.replace(OURS, '');
+    assert(!left.includes('<'), `tooltip 里有没转义的标签: ${html}`);
+  };
+
+  // 轴类:分类名(x)、系列名、副指标名三条路
+  const axis = m.render({...props,
+    result:{columns:[{name:'month'},{name:'sales'},{name:'orders'}],rows:[[XSS,12000000,500000]]},
+    secondaryMetrics:[{...secondary, name:`订单量${XSS}`}]});
+  const axisHtml = axis.tooltip.formatter([{axisValue:XSS, marker:'<span></span>', seriesName:`销售额${XSS}`, seriesIndex:0, value:12000000}]);
+  raw(axisHtml);
+  assert(axisHtml.includes('&lt;img'), '外来文本要转义后仍然显示出来,不是整段丢掉');
+  assert(axisHtml.includes('<span></span>'), 'ECharts 自己生成的 marker 是结构性 HTML,不能被转义掉');
+
+  // 饼图:扇区名
+  const evilPie = m.render({...totals,
+    widget:{...totals.widget, bindings:{...totals.widget.bindings, metricIds:['evil','delivery']}},
+    resolvedMetrics:[evil, delivery]});
+  const pieHtml = evilPie.tooltip.formatter({name:`销售额${XSS}`, marker:'<span></span>', value:100, percent:33.3, seriesIndex:0});
+  raw(pieHtml);
+  assert(pieHtml.includes('&lt;img'), '饼图扇区名同样要转义后保留');
+
+  console.log('  ✓ tooltip:分类名/系列名/扇区名里的标签一律转义,marker 不动');
+ }
+
  console.log('Quality regressions passed: light card contrast, dual-axis series and independent units, legacy secondary tooltips, multi-metric pie composition, aggregate labels, pending coverage and unavailable evidence distinction.');
 } finally {rmSync(dir,{recursive:true,force:true});}
