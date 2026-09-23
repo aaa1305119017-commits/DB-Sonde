@@ -1,0 +1,112 @@
+/* 组件卡片视觉预设 —— 移植自 v1 account-page-editor 的 16 个背景预设,token 名
+   已从 v1(--text-primary/--brand/--border)映射到 Sonde(--text/--accent/
+   --border),作用于 [data-visual-preset]。提供默认外观，单卡明确指定的样式优先。 */
+[data-visual-preset]:not([data-visual-preset="none"]) {
+  background-size: cover;
+  background-position: center;
+  color: var(--text);
+}
+
+[data-visual-preset="aurora"] {
+  --text: #ebfffb; --text-2: #a7cfca; --text-3: #86b0ab; --accent: #42dfb2; --accent-soft: rgba(66,223,178,.16); --border: #2d756f; --border-2: #3d8a83;
+  border-color: #2d756f; background-color: #0d252b; --surface: #0d252b;
+  background-image: radial-gradient(circle at 8% 0, rgba(66,223,178,.28), transparent 38%), radial-gradient(circle at 96% 18%, rgba(61,140,255,.22), transparent 34%), linear-gradient(145deg, #0b2228, #102936 58%, #0b1d2a);
+}
+[data-visual-preset="ocean"] {
+  --text: #edf7ff; --text-2: #a9c4dc; --text-3: #8ba7c2; --accent: #53b7ff; --accent-soft: rgba(83,183,255,.16); --border: #2f648c; --border-2: #3f7aa6;
+  border-color: #2f648c; background-color: #0c1d32; --surface: #0c1d32;
+  background-image: radial-gradient(circle at 85% -10%, rgba(63,158,255,.32), transparent 42%), linear-gradient(160deg, #0a1830, #0c2740 55%, #071624);
+}
+[data-visual-preset="violet"] {
+  --text: #fbf4ff; --text-2: #c8b6d8; --text-3: #ab97be; --accent: #bd8cff; --accent-soft: rgba(189,140,255,.16); --border: #694b8b; --border-2: #7d5da2;
+  border-color: #694b8b; background-color: #211535; --surface: #211535;
+  background-image: radial-gradient(circle at 10% 10%, rgba(174,95,255,.3), transparent 36%), radial-gradient(circle at 92% 86%, rgba(71,125,255,.2), transparent 40%), linear-gradient(145deg, #1e1230, #291a3e 62%, #17152d);
+}
+[data-visual-preset="sunset"] {
+  --text: #fff7f2; --text-2: #dcbab4; --text-3: #c19f9a; --accent: #ff9b6f; --accent-soft: rgba(255,155,111,.17); --border: #8a514d; --border-2: #a26460;
+  border-color: #8a514d; background-color: #321b24; --surface: #321b24;
+  background-image: radial-gradient(circle at 92% 0, rgba(255,151,91,.32), transparent 42%), radial-gradient(circle at 0 100%, rgba(163,75,174,.23), transparent 44%), linear-gradient(150deg, #2b1823, #3a202b 58%, #251927);
+}
+[data-visual-preset="glass"] {
+  --text: #f2f8ff; --text-2: #b4c3d2; --text-3: #93a6b8; --accent: #89d5ff; --accent-soft: rgba(137,213,255,.15); --border: rgba(176,211,235,.34); --border-2: rgba(176,211,235,.48);
+  border-color: rgba(176,211,235,.34); background-color: rgba(19,32,45,.82); --surface: rgba(19,32,45,.82);
+  background-image: linear-gradient(135deg, rgba(255,255,255,.11), rgba(255,255,255,.025) 48%, rgba(102,183,255,.08));
+  backdrop-filter: blur(16px) saturate(125%);
+}
+[data-visual-preset="gold"] {
+  --text: #fff8dc; --text-2: #ccbc8f; --text-3: #b0a071; --accent: #f6c453; --accent-soft: rgba(246,196,83,.16); --border: #8f712e; --border-2: #a5843b;
+  border-color: #8f712e; background-color: #1d1a12; --surface: #1d1a12;
+  background-image: radial-gradient(circle at 100% 0, rgba(246,196,83,.3), transparent 40%), linear-gradient(135deg, #17140d, #282214 55%, #12110d);
+}
+[data-visual-preset="jade"] {
+  --text: #effff6; --text-2: #a6cbb7; --text-3: #8ab29b; --accent: #43d58b; --accent-soft: rgba(67,213,139,.16); --border: #357a55; --border-2: #418f65;
+  border-color: #357a55; background-color: #0c251b; --surface: #0c251b;
+  background-image: radial-gradient(circle at 10% 0, rgba(64,219,137,.31), transparent 38%), radial-gradient(circle at 100% 100%, rgba(181,221,80,.17), transparent 42%), linear-gradient(145deg, #0a1d15, #123124 60%, #081811);
+}
+[data-visual-preset="rose"] {
+  --text: #fff3fa; --text-2: #dcb2cc; --text-3: #c799b6; --accent: #ff72b4; --accent-soft: rgba(255,114,180,.16); --border: #93486f; --border-2: #a95a83;
+  border-color: #93486f; background-color: #2a1523; --surface: #2a1523;
+  background-image: radial-gradient(circle at 92% 8%, rgba(255,103,175,.34), transparent 40%), radial-gradient(circle at 0 100%, rgba(151,83,255,.2), transparent 44%), linear-gradient(150deg, #25101d, #351a2b 58%, #200f1b);
+}
+[data-visual-preset="ember"] {
+  --text: #fff5f2; --text-2: #e0b0aa; --text-3: #ca9a94; --accent: #ff5c45; --accent-soft: rgba(255,92,69,.18); --border: #a23c35; --border-2: #b94c44;
+  border-color: #a23c35; background-color: #281214; --surface: #281214;
+  background-image: radial-gradient(circle at 88% 0, rgba(255,82,54,.38), transparent 40%), radial-gradient(circle at 0 100%, rgba(255,174,66,.2), transparent 45%), linear-gradient(150deg, #210d10, #351617 58%, #1b0b0e);
+}
+[data-visual-preset="cyber"] {
+  --text: #f5f7ff; --text-2: #aab6dc; --text-3: #929ec5; --accent: #18e0ff; --accent-soft: rgba(24,224,255,.16); --border: #6848c5; --border-2: #7d5cd9;
+  border-color: #6848c5; background-color: #11162d; --surface: #11162d;
+  background-image: radial-gradient(circle at 8% 0, rgba(24,224,255,.34), transparent 34%), radial-gradient(circle at 96% 100%, rgba(255,48,190,.3), transparent 40%), linear-gradient(145deg, #0d1127, #171b3a 56%, #0d0b22);
+}
+[data-visual-preset="slate"] {
+  --text: #eef3fb; --text-2: #b0c0d4; --text-3: #93a4bc; --accent: #8fb3e0; --accent-soft: rgba(143,179,224,.16); --border: #3a4a60; --border-2: #4a5d76;
+  border-color: #3a4a60; background-color: #131a24; --surface: #131a24;
+  background-image: radial-gradient(circle at 10% 0, rgba(140,175,220,.16), transparent 40%), linear-gradient(150deg, #121924, #1a2432 58%, #10161f);
+}
+[data-visual-preset="mint"] {
+  --text: #ecfff9; --text-2: #a6d0c4; --text-3: #8bbcae; --accent: #4fe0c0; --accent-soft: rgba(79,224,192,.16); --border: #2e7a68; --border-2: #3a8f7b;
+  border-color: #2e7a68; background-color: #0c221e; --surface: #0c221e;
+  background-image: radial-gradient(circle at 90% 0, rgba(79,224,192,.28), transparent 40%), linear-gradient(150deg, #0a1e1a, #123029 58%, #0a1c18);
+}
+[data-visual-preset="amber"] {
+  --text: #fff6e8; --text-2: #d5be96; --text-3: #bda87e; --accent: #ffb454; --accent-soft: rgba(255,180,84,.16); --border: #8a6326; --border-2: #a17631;
+  border-color: #8a6326; background-color: #201810; --surface: #201810;
+  background-image: radial-gradient(circle at 0 0, rgba(255,180,84,.3), transparent 42%), linear-gradient(150deg, #1c1409, #2a1f10 58%, #18110a);
+}
+[data-visual-preset="plum"] {
+  --text: #fbeeff; --text-2: #cdb0d8; --text-3: #b498c1; --accent: #d18cff; --accent-soft: rgba(209,140,255,.16); --border: #7a4680; --border-2: #905897;
+  border-color: #7a4680; background-color: #241428; --surface: #241428;
+  background-image: radial-gradient(circle at 95% 5%, rgba(209,140,255,.3), transparent 40%), radial-gradient(circle at 0 100%, rgba(255,110,180,.16), transparent 44%), linear-gradient(150deg, #1f1024, #2c1834 58%, #1c0f22);
+}
+[data-visual-preset="coral"] {
+  --text: #fff2ef; --text-2: #dbb0a8; --text-3: #c69a91; --accent: #ff8a7a; --accent-soft: rgba(255,138,122,.16); --border: #96463d; --border-2: #ac564b;
+  border-color: #96463d; background-color: #2a1616; --surface: #2a1616;
+  background-image: radial-gradient(circle at 90% 0, rgba(255,138,122,.3), transparent 42%), linear-gradient(150deg, #241110, #33191a 58%, #210f0f);
+}
+[data-visual-preset="indigo"] {
+  --text: #f0f2ff; --text-2: #b2b8e0; --text-3: #9aa0cd; --accent: #8a9bff; --accent-soft: rgba(138,155,255,.16); --border: #40468c; --border-2: #5057a3;
+  border-color: #40468c; background-color: #141733; --surface: #141733;
+  background-image: radial-gradient(circle at 10% 0, rgba(138,155,255,.28), transparent 38%), radial-gradient(circle at 95% 100%, rgba(90,200,255,.16), transparent 42%), linear-gradient(150deg, #101230, #191d3e 58%, #0f1128);
+}
+
+/* 预设卡「卡内表面色」—— 明细表的冻结列/表头/斑马纹/悬停都取 --surface*,
+   若沿用页面级取值会与预设背景撞色(深色块压在彩色卡上,文字几乎看不清)。
+   这里从预设自身底色派生,保证同色系且有层次。--surface 已在各预设里给出。 */
+[data-visual-preset]:not([data-visual-preset="none"]) {
+  --surface-2: color-mix(in srgb, var(--surface) 86%, var(--text) 14%);
+  --surface-3: color-mix(in srgb, var(--surface) 78%, var(--text) 22%);
+}
+
+/* 预设选择器(WidgetInspector 外观区) */
+.dash-preset-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.dash-preset-swatch { height: 30px; border-radius: 7px; border: 1px solid var(--border); cursor: default; position: relative; overflow: hidden; }
+.dash-preset-swatch.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dash-preset-swatch.none { display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 11px; background: var(--surface-2); }
+.dash-preset-field { display: grid; gap: 6px; font-size: 13px; color: var(--text-3); }
+
+/* Neutral analysis cards inherit the app's light/dark theme. */
+[data-visual-preset="editorial"] {
+  background: var(--surface); border-color: var(--border); color: var(--text);
+  box-shadow: none;
+}
+[data-visual-preset="editorial"] .dash-widget-header[hidden] { display: none; }

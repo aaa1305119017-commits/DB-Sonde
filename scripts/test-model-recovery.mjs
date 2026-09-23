@@ -1,0 +1,30 @@
+import assert from 'node:assert/strict';
+import { buildSync } from 'esbuild';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { createRequire } from 'node:module';
+const dir = mkdtempSync(join(tmpdir(), 'sonde-model-recovery-'));
+const originalFetch = globalThis.fetch;
+try {
+  const outfile = join(dir,'test.cjs');
+  buildSync({stdin:{contents:"export * from './src/features/agent/model/structured'; export {useAi} from './src/features/ai/aiStore';",resolveDir:resolve('.'),loader:'ts'},outfile,bundle:true,platform:'node',format:'cjs',logLevel:'silent'});
+  const { callStructured,useAi } = createRequire(import.meta.url)(outfile);
+  const config = { ...useAi.getState().config,provider:'cloud',agentRoles:{reasoning:'cloud'},cloud:{baseUrl:'https://fixture.invalid/v1',apiKey:'fixture',model:'economical-model'} };
+  const call = { role:'reasoning',node:'AnalysisAgent',system:'Inspect verified facts',user:'Sales 10',name:'analysis',maxRepairs:0,schema:{type:'object',properties:{summary:{type:'string'}},required:['summary'],additionalProperties:false} };
+  const success = () => new Response(JSON.stringify({choices:[{message:{content:'{"summary":"Sales 10"}'}}],usage:{prompt_tokens:4,completion_tokens:3}}));
+  const bodies=[]; let attempts=0;
+  globalThis.fetch=async (_url,options)=>{bodies.push(options.body);return ++attempts===1 ? new Response('{"error":{"message":"Internal Server Error","code":"internal_error"}}',{status:500}):success();};
+  const recovered=await callStructured(call,config);
+  assert(recovered.ok); assert.equal(recovered.attempts,2); assert.equal(recovered.mode,'json_schema'); assert.equal(bodies[0],bodies[1]);
+  assert.equal(recovered.promptTokens,4);assert.equal(recovered.completionTokens,3);
+  attempts=0;globalThis.fetch=async()=>{attempts++;return new Response('internal_error response_format',{status:500});};
+  const failed=await callStructured(call,config);assert(!failed.ok);assert.equal(attempts,3);assert.equal(failed.attempts,3);assert.equal(failed.mode,'json_schema');assert(failed.errors[0].includes('已自动重试 2 次'));assert(!failed.errors[0].includes('Error:'));
+  attempts=0;globalThis.fetch=async()=>{attempts++;return new Response('wrong key',{status:401});};
+  const auth=await callStructured(call,config);assert.equal(attempts,1);assert(auth.errors[0].includes('密钥'));
+  attempts=0;const formats=[];globalThis.fetch=async(_url,options)=>{formats.push(JSON.parse(options.body).response_format);return ++attempts===1?new Response('json_schema unsupported',{status:400}):success();};
+  const fallback=await callStructured(call,config);assert(fallback.ok);assert.equal(fallback.mode,'prompt');assert.equal(fallback.attempts,2);assert(formats[0]);assert.equal(formats[1],undefined);
+  const controller=new AbortController();attempts=0;globalThis.fetch=async()=>{attempts++;queueMicrotask(()=>controller.abort());return new Response('',{status:500});};
+  await assert.rejects(callStructured({...call,signal:controller.signal},config),e=>e.name==='AbortError');assert.equal(attempts,1);
+  console.log('Model recovery: actual structured request recovers from screenshot HTTP 500; bounded exhaustion, unchanged payload/model, auth failure, schema fallback and cancellation passed.');
+} finally {globalThis.fetch=originalFetch;rmSync(dir,{recursive:true,force:true});}

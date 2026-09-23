@@ -1,0 +1,93 @@
+.asset-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  background: color-mix(in srgb, #05070c 55%, transparent);
+  display: grid;
+  place-items: center;
+  padding: 3vh 3vw;
+}
+.asset-panel {
+  /* 内部的日志 / cron 弹窗是 position:absolute + inset:0,
+     这里给它们一个定位上下文,好让弹窗贴着面板而不是整个视口。 */
+  position: relative;
+  width: min(1240px, 96vw);
+  height: min(860px, 92vh);
+  display: flex;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+/* 左侧导航:四个面互跳,不用关掉再从顶栏重开 */
+.asset-rail {
+  flex: 0 0 176px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 10px;
+  background: var(--surface-2);
+  border-right: 1px solid var(--border);
+}
+.asset-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 12px;
+  font-weight: 650;
+  font-size: 14px;
+}
+.asset-brand svg { color: var(--accent); }
+.asset-nav {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 9px;
+  /* 必须显式写掉 —— 这是个 <button>,不写就露出浏览器默认的 2px 边框。
+     用 transparent 而不是 0,是为了保持原来的尺寸不变。 */
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  /* 必须定位 + 抬层级,否则绝对定位的胶囊会画在它上面把内容盖住
+     (定位元素默认压在非定位元素之上,z-index:0 也压不住)。 */
+  position: relative;
+  z-index: 1;
+  transition: color var(--dur-1) var(--ease);
+}
+/* 品牌标题同理 */
+.asset-brand { position: relative; z-index: 1; }
+.asset-nav svg { flex: 0 0 auto; }
+/* 底色交给后面那块玻璃胶囊(见 motion.css),这儿只管文字和图标的颜色。
+   原来是 hover 和 on 各自换背景 —— 两块不同的方形色块各闪各的,
+   现在是同一块玻璃在它们之间滑。 */
+.asset-nav:hover { color: var(--text); }
+.asset-nav.on { color: var(--text); }
+.asset-nav.on svg { color: var(--accent); }
+/* 竖排导航的胶囊按这儿的圆角走,不用标签栏那种全圆 */
+.asset-rail .pill { border-radius: 9px; }
+.asset-nav-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.asset-nav-txt b { font-size: 12.5px; font-weight: 600; }
+.asset-nav-txt small { font-size: 10.5px; color: var(--text-3); }
+.asset-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.asset-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.asset-h-title { font-weight: 650; font-size: 16px; }
+.asset-h-sub { font-size: 12.5px; color: var(--text-3); }

@@ -1,0 +1,62 @@
+/* 筛选控件(多选、日期区间、日历)的样式。
+   单独一份是因为导出的离线网页要用同一套 —— 那边是另写的一份原生 JS 实现,
+   共用这个文件才能保证长相和看板上一模一样,而不是靠手对着抄。
+   类名和结构两边必须保持一致,改这里之前先看一眼 standalone.runtime.js。 */
+
+.dash-component-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 10px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--surface-2) 72%, transparent); }
+.dash-component-date, .dash-component-select { min-width: 0; display: inline-flex; align-items: center; gap: 4px; }
+.dash-component-date input, .dash-component-select select { height: 26px; min-width: 104px; max-width: 150px; padding: 0 6px; border: 1px solid var(--border-2); border-radius: 6px; background: var(--surface); color: var(--text-2); font: inherit; font-size: 12px; }
+.dash-component-date i { color: var(--text-3); font-style: normal; }
+
+.dash-v1-multi, .dash-mtree { position: relative; min-width: 0; width: 100%; }
+.dash-v1-multi-trigger, .dash-mtree-trigger { min-height: 30px; width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px; padding: 3px 6px; border: 1px solid var(--border-2); border-radius: 6px; background: var(--surface-2); color: var(--text); cursor: pointer; outline: none; }
+.dash-v1-multi.open .dash-v1-multi-trigger, .dash-mtree.open .dash-mtree-trigger { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.dash-v1-multi-values, .dash-mtree-values { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.dash-v1-multi-values .placeholder, .dash-mtree-values .placeholder { padding-left: 2px; color: var(--text-3); font-size: 12px; }
+.dash-v1-multi-chip, .dash-mtree-chip { max-width: 100%; display: inline-flex; align-items: center; gap: 3px; padding: 2px 4px 2px 7px; border: 1px solid var(--border-2); border-radius: 4px; background: var(--surface); color: var(--text-2); font-size: 11.5px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-v1-multi-chip button, .dash-mtree-chip button { display: inline-flex; padding: 0; border: 0; background: transparent; color: var(--text-3); cursor: pointer; }
+.dash-v1-multi-chevron, .dash-mtree-chevron { color: var(--text-3); transition: transform var(--dur-2) var(--ease); }
+.dash-v1-multi.open .dash-v1-multi-chevron, .dash-mtree.open .dash-mtree-chevron { transform: rotate(180deg); }
+.dash-v1-multi-menu, .dash-mtree-pop { position: fixed; z-index: 9100; max-height: 360px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border-2); border-radius: 8px; background: var(--surface); box-shadow: 0 16px 44px rgba(0,0,0,.42); }
+.dash-v1-multi-search, .dash-mtree-search { height: 34px; display: flex; align-items: center; gap: 6px; margin: 7px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--text-3); }
+.dash-v1-multi-search input, .dash-mtree-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; color: var(--text); font: inherit; font-size: 12.5px; }
+.dash-v1-multi-options, .dash-mtree-list { overflow-y: auto; padding: 5px; }
+.dash-v1-multi-options > button { width: 100%; min-height: 34px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 5px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--text-2); text-align: left; cursor: pointer; }
+.dash-v1-multi-options > button:hover { background: var(--surface-2); }
+.dash-v1-multi-options > button.selected { color: var(--accent); font-weight: 600; }
+.dash-v1-multi-empty, .dash-mtree-empty { padding: 14px 10px; color: var(--text-3); font-size: 12px; text-align: center; }
+
+.dash-daterange { position: relative; display: inline-block; }
+.dash-daterange-trigger { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1px solid var(--border-2, var(--border)); border-radius: 6px; background: var(--surface-2); color: var(--text); cursor: pointer; font: inherit; font-size: 13px; white-space: nowrap; }
+.dash-daterange-trigger:hover { border-color: var(--accent-border); }
+.dash-daterange-pop { position: fixed; z-index: 9000; transform: translateZ(0); display: flex; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 14px 40px -10px rgba(0, 0, 0, .45); }
+.dash-daterange-presets { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; align-content: start; }
+.dash-daterange-presets button { padding: 5px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--text-2); cursor: pointer; font-size: 12.5px; white-space: nowrap; text-align: left; }
+.dash-daterange-presets button:hover { border-color: var(--accent-border); color: var(--text); }
+.dash-daterange-presets button.on { border-color: var(--accent-border); background: var(--accent-soft); color: var(--text); }
+/* 月历(区间点选) */
+.dash-cal { padding-left: 10px; border-left: 1px solid var(--border); width: 232px; }
+.dash-cal-modes { display: flex; gap: 3px; margin-bottom: 8px; padding: 2px; border-radius: 7px; background: var(--surface-2); }
+.dash-cal-modes button { flex: 1; height: 24px; border: 0; border-radius: 5px; background: transparent; color: var(--text-3); cursor: pointer; font-size: 12.5px; }
+.dash-cal-modes button:hover { color: var(--text); }
+.dash-cal-modes button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
+.dash-cal-cells { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 6px 0; }
+.dash-cal-cell { height: 40px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-2); color: var(--text); cursor: pointer; font-size: 13px; }
+.dash-cal-cell:hover { border-color: var(--accent-border); color: var(--text); }
+.dash-cal-cell.on { background: var(--accent); color: var(--accent-ink, #fff); border-color: var(--accent); }
+.dash-cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.dash-cal-head strong { font-size: 13px; }
+.dash-cal-head button { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--text-2); cursor: pointer; }
+.dash-cal-head button:hover { background: var(--surface-2); color: var(--text); }
+.dash-cal-grid { display: grid; grid-template-columns: repeat(7, 30px); }
+.dash-cal-weekdays span { display: grid; place-items: center; height: 24px; font-size: 11px; color: var(--text-3); }
+.dash-cal-day { height: 28px; border: 0; background: transparent; color: var(--text); cursor: pointer; font-size: 12.5px; border-radius: 6px; }
+.dash-cal-day:hover { background: var(--surface-2); }
+.dash-cal-day.other { color: var(--text-3); opacity: .5; }
+.dash-cal-day.in { background: var(--accent-soft); border-radius: 0; }
+.dash-cal-day.start, .dash-cal-day.end { background: var(--accent); color: var(--accent-ink, #fff); }
+.dash-cal-day.start { border-radius: 6px 0 0 6px; }
+.dash-cal-day.end { border-radius: 0 6px 6px 0; }
+.dash-cal-day.start.end { border-radius: 6px; }
+.dash-cal-day.today { box-shadow: inset 0 0 0 1px var(--accent-border); }
+.dash-cal-foot { margin-top: 6px; font-size: 11px; color: var(--text-3); text-align: center; }

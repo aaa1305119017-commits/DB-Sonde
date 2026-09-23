@@ -1,0 +1,78 @@
+[package]
+name = "sonde"
+version = "0.51.13"
+description = "DB Sonde — a fast, friendly database manager"
+authors = ["DB Sonde contributors"]
+license = "MIT"
+edition = "2021"
+
+[lib]
+# The `_lib` suffix keeps the lib name unique so it doesn't clash with the bin
+# name on Windows (see rust-lang/cargo#8519).
+name = "sonde_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+# Native folder / file picker for bulk-importing ETL configs.
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+futures-util = "0.3"
+thiserror = "2"
+chrono = { version = "0.4", features = ["serde"] }
+rust_decimal = "1"
+bigdecimal = "0.4"
+uuid = { version = "1", features = ["serde", "v4"] }
+# HTTP client for scheduler integrations (DolphinScheduler / Airflow / … ). The
+# frontend calls schedulers through a Rust proxy command to dodge webview CORS
+# and handle self-signed TLS. rustls only, to match sqlx (no OpenSSL).
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+# Tiny localhost HTTP server for the `sonde` Python bridge: user scripts POST
+# SQL back to the app to run on their live connections (returns a DataFrame).
+tiny_http = "0.12"
+# Oracle drivers. Default is pure-Rust "thin" mode (`oracle-rs`, speaks TNS
+# directly — no Instant Client needed). Users can opt a connection into "thick"
+# mode (`oracle`, ODPI-C) to use an installed Oracle Instant Client. Both build
+# without any Oracle SDK present (ODPI-C loads the client dynamically at runtime).
+oracle-rs = "0.1.7"
+oracle = "0.6"
+tauri-plugin-clipboard-manager = "2"
+ring = "0.17.14"
+libc = "0.2"
+
+[dependencies.sqlx]
+version = "0.8"
+default-features = false
+features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "mysql",
+    "postgres",
+    "sqlite",
+    "chrono",
+    "rust_decimal",
+    "bigdecimal",
+    "uuid",
+    "json",
+]
+
+[profile.dev]
+# Faster incremental dev builds; DB drivers are heavy to optimize.
+opt-level = 1
+
+# oracle-rs 0.1.7 sends TNS marker packets with a 16-bit length field even on
+# large-SDU connections, so the server never answers the RESET and every
+# server-side SQL error reaches us as a bogus "temporary LOB" message on a dead
+# connection. Patched locally until the fix is upstream — see
+# third_party/oracle-rs/VENDORED.md.
+[patch.crates-io]
+oracle-rs = { path = "third_party/oracle-rs" }
+
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }

@@ -1,0 +1,41 @@
+--- oracle-rs-0.1.7/src/connection.rs
++++ oracle-rs-local/src/connection.rs
+@@ -603,11 +603,18 @@
+         // Marker packet structure: [length][0x00][0x00][0x00][0x0c][flags][0x00][0x00] + payload
+         // Payload: [0x01][0x00][marker_type]
+         let payload_len = 3; // 0x01, 0x00, marker_type
+-        let total_len = (PACKET_HEADER_SIZE + payload_len) as u16;
++        let total_len = (PACKET_HEADER_SIZE + payload_len) as u32;
+ 
+-        // Header
+-        buf.write_u16_be(total_len)?;
+-        buf.write_u16_be(0)?; // zeros in large_sdu position
++        // Header. The length field follows the format negotiated at ACCEPT: 32-bit
++        // in large-SDU mode, 16-bit + checksum otherwise. Writing 16-bit on a
++        // large-SDU connection makes the server read the length as 0x000b0000 and
++        // wait for a packet that never arrives, so it drops the connection.
++        if self.large_sdu {
++            buf.write_u32_be(total_len)?;
++        } else {
++            buf.write_u16_be(total_len as u16)?;
++            buf.write_u16_be(0)?; // checksum
++        }
+         buf.write_u8(PacketType::Marker as u8)?;
+         buf.write_u8(0)?; // flags
+         buf.write_u16_be(0)?; // reserved
+@@ -5023,8 +5030,13 @@
+ 
+         // Build MARKER packet header
+         let packet_len = PACKET_HEADER_SIZE + 3; // Header + 3 bytes payload
+-        packet_buf.write_u16_be(packet_len as u16)?;
+-        packet_buf.write_u16_be(0)?; // Checksum
++        // Length field must follow the negotiated SDU format — see send_marker above.
++        if inner.large_sdu {
++            packet_buf.write_u32_be(packet_len as u32)?;
++        } else {
++            packet_buf.write_u16_be(packet_len as u16)?;
++            packet_buf.write_u16_be(0)?; // Checksum
++        }
+         packet_buf.write_u8(PacketType::Marker as u8)?;
+         packet_buf.write_u8(0)?; // Flags
+         packet_buf.write_u16_be(0)?; // Header checksum

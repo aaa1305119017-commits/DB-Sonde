@@ -1,0 +1,199 @@
+.agent-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  overflow: auto;
+}
+.agent-intro {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.agent-intro b { color: var(--text-2); font-weight: 600; }
+
+/* 流水线:走到哪一步、每一步拿到了什么 */
+.agent-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.agent-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 12px;
+}
+.agent-step svg { flex: 0 0 auto; margin-top: 2px; color: var(--text-3); }
+.agent-step.todo { opacity: .45; }
+.agent-step.done svg { color: var(--green); }
+.agent-step.active { background: var(--surface-2); }
+.agent-step.active svg { color: var(--accent); }
+.agent-step.failed { background: color-mix(in srgb, var(--red) 12%, transparent); }
+.agent-step.failed svg { color: var(--red); }
+.agent-step-body { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.agent-step-name { color: var(--text-2); }
+.agent-step.done .agent-step-name, .agent-step.active .agent-step-name { color: var(--text); }
+.agent-step-detail {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+/* 澄清:该问就问 */
+.agent-ask {
+  border: 1px solid var(--accent);
+  border-radius: 9px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.agent-ask-q { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); }
+.agent-ask-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.agent-ask-free .input { width: 100%; font-size: 12px; }
+
+.agent-report {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 11px 13px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.agent-report p { margin: 0 0 6px; }
+.agent-report p:last-child { margin-bottom: 0; }
+.agent-point {
+  padding-left: 12px;
+  border-left: 2px solid var(--accent);
+  color: var(--text);
+}
+
+.agent-failed {
+  border: 1px solid color-mix(in srgb, var(--red) 45%, var(--border));
+  border-radius: 9px;
+  padding: 10px 12px;
+}
+.agent-failed-h { display: flex; align-items: center; gap: 6px; color: var(--red); font-size: 12.5px; margin-bottom: 6px; }
+.agent-failed pre {
+  margin: 0;
+  font: 11.5px/1.6 var(--mono);
+  color: var(--text-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.agent-usage { font-size: 11px; color: var(--text-3); padding: 0 2px; }
+
+.agent-input { display: flex; flex-direction: column; gap: 6px; margin-top: auto; }
+.agent-input textarea { resize: vertical; font-size: 12.5px; }
+.agent-input .btn { align-self: flex-end; }
+
+/* 建好的看板 */
+.agent-built {
+  border: 1px solid color-mix(in srgb, var(--green) 45%, var(--border));
+  border-radius: 9px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.agent-built-h { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+.agent-built-h svg { color: var(--green); }
+.agent-built p { margin: 0; font-size: 12px; color: var(--text-2); line-height: 1.6; }
+.agent-built p b { color: var(--text); }
+.agent-built .btn { align-self: flex-start; }
+.agent-review { margin: 0; padding-left: 18px; font-size: 11.5px; color: var(--text-3); line-height: 1.6; }
+
+/* 没做到的要求 —— 顶在结论前面,不能让人看完才发现漏了条件 */
+.agent-dropped {
+  border: 1px solid var(--amber);
+  border-radius: 9px;
+  padding: 9px 12px;
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+}
+.agent-dropped-h { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--amber); margin-bottom: 5px; }
+.agent-dropped ul { margin: 0; padding-left: 18px; font-size: 11.5px; line-height: 1.65; color: var(--text-2); }
+
+/* 正在跑的那一步的秒表 —— 静止的转圈和真死循环长得一样,得给个数 */
+.agent-step-elapsed {
+  margin-left: 7px;
+  font-size: 11px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tool 调试台 ──────────────────────────────────────────────── */
+.agent-debug {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.agent-debug-bar { display: flex; align-items: center; gap: 7px; }
+.agent-debug-bar select { flex: 1; min-width: 0; }
+.agent-debug-desc { font-size: 11.5px; color: var(--text-3); line-height: 1.6; }
+.agent-debug-write { color: var(--amber); }
+.agent-debug-label { font-size: 11px; color: var(--text-3); }
+.agent-debug-label.ok { color: var(--green); }
+.agent-debug-label.bad { color: var(--red); }
+.agent-debug-io {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 11.5px;
+  line-height: 1.5;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  resize: vertical;
+}
+.agent-debug-io.out { margin: 0; max-height: 260px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
+.agent-debug-io.out.ok { border-color: color-mix(in srgb, var(--green) 45%, var(--border)); }
+.agent-debug-io.out.bad { border-color: color-mix(in srgb, var(--red) 45%, var(--border)); }
+.agent-debug-schema summary { font-size: 11px; color: var(--text-3); cursor: pointer; }
+.agent-debug-schema pre {
+  margin: 6px 0 0;
+  max-height: 200px;
+  overflow: auto;
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+}
+.agent-debug-audit { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.agent-debug-audit li {
+  display: flex; align-items: baseline; gap: 7px;
+  font-size: 11px; padding: 3px 6px;
+  border-radius: var(--radius-sm); background: var(--surface-2);
+}
+.agent-debug-audit li.bad { background: color-mix(in srgb, var(--red) 12%, var(--surface-2)); }
+.agent-debug-kind { color: var(--text-3); min-width: 32px; }
+.agent-debug-name { font-family: var(--mono, ui-monospace, monospace); color: var(--text); }
+.agent-debug-ms { color: var(--text-3); margin-left: auto; font-variant-numeric: tabular-nums; }
+.agent-debug-detail { flex-basis: 100%; color: var(--text-3); word-break: break-all; }
+/* 正在跑的那一步在等什么 —— 转圈只说明"在跑",这行说明"在跑什么" */
+.agent-step-doing {
+  margin-left: 7px;
+  font-size: 11px;
+  color: var(--accent);
+  font-family: var(--mono, ui-monospace, monospace);
+}

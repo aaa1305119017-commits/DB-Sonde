@@ -1,0 +1,47 @@
+DB Sonde
+Copyright (c) 2026 DB Sonde contributors
+
+This product is licensed under the MIT License (see LICENSE).
+
+
+== Icons and artwork ==
+
+All application and connection icons are original work created for this
+project and are covered by the MIT license above. DB Sonde does not
+redistribute any database vendor logo or trademark; connections are shown as
+lettered badges instead. Database and vendor names appear only as plain text
+to identify the system you are connecting to; they are the trademarks of
+their respective owners and their use here is nominative.
+
+
+== Vendored source ==
+
+src-tauri/third_party/oracle-rs is a vendored copy of oracle-rs, dual
+licensed MIT / Apache-2.0. See the LICENSE files and VENDORED.md in that
+directory for the upstream notice and a description of the local fix.
+
+
+== Bundled third-party software ==
+
+The built application bundles JavaScript and Rust dependencies. All of them
+are under permissive licenses (MIT, ISC, Apache-2.0, BSD-2/3-Clause, Zlib,
+0BSD, Unlicense, BSL-1.0, Unicode-3.0, CC0-1.0, UPL-1.0, CDLA-Permissive-2.0,
+MPL-2.0); the project ships no GPL, LGPL or AGPL code. Run `npm ls` and
+`cargo tree` for the exact set and versions of a given build.
+
+Apache-2.0 components that ship their own NOTICE, reproduced here as
+required by section 4(d) of that license:
+
+  Apache ECharts
+  Copyright 2017-2026 The Apache Software Foundation
+
+  This product includes software developed at
+  The Apache Software Foundation (https://www.apache.org/).
+
+Five Rust crates in the CSS parsing chain (cssparser, cssparser-macros,
+selectors, dtoa-short, option-ext) are MPL-2.0. They are used unmodified, so
+the MPL's file-level source obligations are satisfied by the upstream
+crates.io releases.
+
+Fonts are pulled at build time from @fontsource (Inter, JetBrains Mono) and
+are licensed under the SIL Open Font License 1.1.
