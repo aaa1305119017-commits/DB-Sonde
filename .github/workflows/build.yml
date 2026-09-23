@@ -9,6 +9,7 @@ name: build
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -100,3 +101,48 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
           if-no-files-found: error
+
+  # 打 tag 时把三个平台的包发成 Release。单独一个 job,不放进矩阵 ——
+  # 三个并行 job 各自去建同一个 Release 会打架。
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 按平台整理并改名
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          ver="${GITHUB_REF_NAME#v}"
+          while IFS= read -r -d '' f; do
+            case "$f" in
+              *aarch64-apple-darwin*)   plat=macOS_arm64 ;;
+              *x86_64-apple-darwin*)    plat=macOS_x64 ;;
+              *x86_64-pc-windows-msvc*) plat=Windows_x64 ;;
+              *)                        plat=unknown ;;
+            esac
+            ext="${f##*.}"
+            cp "$f" "out/DB-Sonde_${ver}_${plat}.${ext}"
+          done < <(find artifacts -type f \( -name '*.dmg' -o -name '*.msi' -o -name '*.exe' \) -print0)
+          ls -la out
+          ( cd out && sha256sum ./* > SHA256SUMS.txt && cat SHA256SUMS.txt )
+
+      - name: 建 Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "DB Sonde ${GITHUB_REF_NAME#v} Beta" \
+            --prerelease \
+            --notes "三平台构建产物,均由 CI 在各自的原生 runner 上构建。校验和见 SHA256SUMS.txt。
+
+            **未签名**:macOS 首次打开走 系统设置 → 隐私与安全性 → 仍要打开;Windows 会弹 SmartScreen,点 更多信息 → 仍要运行。
+
+            本地 AI 与 Python 运行时不含在安装包内,见 README 的「可选运行时」。"
