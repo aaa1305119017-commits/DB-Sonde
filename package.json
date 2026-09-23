@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "install:local": "zsh scripts/install-local.zsh",
+    "package:mac": "node scripts/package-macos.mjs",
     "test:integration": "node scripts/test-integration.mjs",
     "test:workspace": "node scripts/test-workspace-regressions.mjs",
     "test:design": "node scripts/test-design-loop.mjs",

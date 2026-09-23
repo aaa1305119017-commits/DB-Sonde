@@ -17,7 +17,7 @@
 > - 指标 / 血缘 / AI 分析那部分是新东西，**没有前人**，问题集中在这里。
 > - 只在 macOS (Apple Silicon) 上跑过，Windows / Linux 没测过；尚未在作者以外的
 >   环境中验证。
-> - 没有发布版本，没有签名证书，要用得自己从源码构建。
+> - 提供 macOS 安装包；当前没有 Apple 开发者签名和公证，首次打开需系统确认。
 
 ## 它是什么
 
@@ -43,7 +43,25 @@ DB Sonde 反过来：支持的数据库少得多，但它知道你这些表背�
 
 PolarDB 的 MySQL 兼容实例按 MySQL 连。
 
-## 构建
+## 下载安装（macOS）
+
+**[下载 DB Sonde 0.51.13 · M 系列 Mac 安装包](https://github.com/aaa1305119017-commits/DB-Sonde/releases/download/v0.51.13/DB-Sonde_0.51.13_macOS_arm64.dmg)**
+
+1. 下载并双击打开 `.dmg`。
+2. 把 **DB Sonde** 拖进旁边的 **Applications（应用程序）**。
+3. 从“应用程序”打开 **DB Sonde**。
+
+不需要安装 Homebrew、Node、Rust，也不用运行命令或编译源码。
+首次打开是空连接列表，可手动创建本地 SQLite 演示库体验。
+
+安装包适用于 Apple Silicon（M 系列芯片），建议 macOS 14 或更新版本。当前版本未经过
+Apple 签名公证；如果首次打开被系统拦截，在 **系统设置 → 隐私与安全性 → 仍要打开**
+中允许 DB Sonde。参见 [Apple 官方说明](https://support.apple.com/102445)。
+
+这是基础安装包：数据库客户端和云端 AI 接口可用，本地 AI 与 Python 运行时未内置。
+安装包校验值和版本说明见 [下载页](https://github.com/aaa1305119017-commits/DB-Sonde/releases/tag/v0.51.13)。
+
+## 从源码构建（开发者）
 
 需要 Node.js、Rust 工具链和你平台上的 Tauri 构建依赖。
 
@@ -51,6 +69,7 @@ PolarDB 的 MySQL 兼容实例按 MySQL 连。
 npm ci
 npm run tauri dev          # 开发模式
 npm run tauri build        # 打包
+npm run package:mac        # Apple Silicon：生成可分发 DMG，包含许可文件和 SHA-256 校验值
 npm run install:local      # macOS：构建并装进 /Applications（不会自动关掉运行中的应用）
 ```
 
@@ -62,7 +81,7 @@ npm run install:local      # macOS：构建并装进 /Applications（不会自�
 macOS 配置目录为 `~/Library/Application Support/com.u35.dbsonde/`，
 本地模型、Python 运行时和脚本工作区存放在 `~/.db-sonde/`。
 
-### 在全新 macOS 上安装
+### 在 macOS 上从源码安装
 
 目前只验证过 Apple Silicon（M 系列芯片）。以下使用 Homebrew，适用于 macOS 14 及更新版本。
 
