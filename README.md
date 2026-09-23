@@ -101,7 +101,7 @@ npx tauri build --target x86_64-apple-darwin
 brew install llama.cpp
 scripts/bundle-llama.sh
 scripts/bundle-python.sh
-npm run tauri build -- --config tauri.bundled.conf.json
+npm run tauri build -- --config src-tauri/tauri.bundled.conf.json
 ```
 
 基础构建不需要这些运行时，云端 AI 接口也不依赖它们。

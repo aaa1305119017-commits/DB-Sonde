@@ -58,15 +58,35 @@ jobs:
       - name: 前端构建
         run: npx vite build
 
+      # runner 的架构就是目标架构,不用 --target:带上它 cargo 会进"交叉编译"模式,
+      # 构建脚本和 proc-macro 产出的 DLL 落在 host 的 target/debug,测试 exe 却在
+      # target/<triple>/debug,Windows 上加载期就炸(0xc0000139)。
       - name: Rust 单元测试
-        run: cargo test --manifest-path src-tauri/Cargo.toml --lib --target ${{ matrix.target }}
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib
+
+      # 上一步在 Windows 上挂过 STATUS_ENTRYPOINT_NOT_FOUND —— 那是 DLL 找到了
+      # 但缺导出符号。失败时把测试 exe 的依赖打出来,否则只能靠猜。
+      - name: Windows 失败时导出 DLL 依赖
+        if: failure() && matrix.target == 'x86_64-pc-windows-msvc'
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Recurse -Filter 'sonde_lib-*.exe' src-tauri/target |
+                 Where-Object { $_.FullName -like '*deps*' } | Select-Object -First 1
+          if (-not $exe) { Write-Output 'no test exe found'; exit 0 }
+          Write-Output ("test exe: " + $exe.FullName)
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -property installationPath
+          $dumpbin = Get-ChildItem -Recurse -Filter dumpbin.exe (Join-Path $vs 'VC\Tools\MSVC') |
+                     Select-Object -First 1
+          if ($dumpbin) { & $dumpbin.FullName /dependents $exe.FullName }
+          else { Write-Output 'dumpbin not found' }
 
       # beforeBuildCommand 默认是 `npm run build`,会把 50 套守卫再跑一遍。
       # 前端上一步已经构建过,所以用 tauri.ci.conf.json 把它置空。
       # 写成文件而不是 --config '{...}':内联 JSON 在 Windows 的 PowerShell
       # 里引号规则不同,会被拆坏。
       - name: 应用构建
-        run: npx tauri build --target ${{ matrix.target }} --config tauri.ci.conf.json
+        run: npx tauri build --target ${{ matrix.target }} --config src-tauri/tauri.ci.conf.json
 
       - uses: actions/upload-artifact@v4
         with:

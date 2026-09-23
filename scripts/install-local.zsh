@@ -31,7 +31,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 # 本地 AI 和 Python 工作台的版本 —— 而不是让构建直接失败。
 bundle_args=()
 if [[ -n "$(print -rl -- src-tauri/binaries/llama/*(N))" && -f src-tauri/binaries/python-runtime.tar.gz ]]; then
-  bundle_args=(--config tauri.bundled.conf.json)
+  bundle_args=(--config src-tauri/tauri.bundled.conf.json)
   print "→ 打包内置运行时(llama + Python)"
 else
   print "→ 未发现内置运行时,构建精简版(本地 AI 与 Python 工作台不可用)"
