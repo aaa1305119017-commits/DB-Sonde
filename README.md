@@ -111,6 +111,7 @@ npm run tauri build -- --config src-tauri/tauri.bundled.conf.json
 - [指标、看板与 ETL 接入](docs/semantic-and-etl.md)
 - [模块结构与开发约定](docs/architecture.md)
 - [AI 分析流程](docs/ai-agent-design.md)
+- [在 Windows 上开发](docs/windows-dev.md) —— 实际踩过的坑：安全软件拦编译产物、PowerShell 5.1 编码陷阱、comctl32 清单导致测试加载即崩
 
 ## 数据与凭据
 
