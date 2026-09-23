@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": [
+      "binaries/llama/*",
+      "binaries/python-runtime.tar.gz"
+    ]
+  }
+}

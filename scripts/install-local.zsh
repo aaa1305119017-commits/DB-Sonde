@@ -26,7 +26,18 @@ cd "$project_dir"
 npm run test:integration
 npm run test:workspace
 cargo test --manifest-path src-tauri/Cargo.toml
-npm run tauri build -- --bundles app
+# 内置运行时(本地 llama、Python)是可选的:跑过 scripts/bundle-llama.sh /
+# bundle-python.sh 才有。有就用叠加配置把它们打进去,没有就构建一个不带
+# 本地 AI 和 Python 工作台的版本 —— 而不是让构建直接失败。
+bundle_args=()
+if [[ -n "$(print -rl -- src-tauri/binaries/llama/*(N))" && -f src-tauri/binaries/python-runtime.tar.gz ]]; then
+  bundle_args=(--config tauri.bundled.conf.json)
+  print "→ 打包内置运行时(llama + Python)"
+else
+  print "→ 未发现内置运行时,构建精简版(本地 AI 与 Python 工作台不可用)"
+  print "  需要的话先跑 scripts/bundle-llama.sh 和 scripts/bundle-python.sh"
+fi
+npm run tauri build -- --bundles app $bundle_args
 
 if [[ ! -d "$built_app" ]]; then
   print -u2 "Build succeeded but the expected app bundle is missing: $built_app"

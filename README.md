@@ -2,19 +2,22 @@
 
 一个桌面数据库客户端，外加一层指标 / 血缘 / AI 分析。Tauri 2 + Rust + React + TypeScript。
 
+> [!NOTE]
+> **这个项目是怎么做出来的**
+>
+> 代码大量借助 AI Coding Agent 实现。需求定义、产品设计、架构取舍、指标口径规则、
+> 测试验证和长期维护由作者负责 —— 包括 `npm run check` 里那 50 来套守卫，以及
+> 「故意把实现改坏、看测试会不会挂」的验证习惯（见[测试](#测试)），它们正是为了
+> 兜住这种协作方式的下限。作者每天用它连生产库干活。
+
 > [!WARNING]
-> **这个项目几乎全部由 AI Agent 写成，bug 很多，请谨慎使用。**
+> **当前是 Beta。写操作请先在测试库上验证 —— 表格编辑会直接 UPDATE 你的库。**
 >
-> 它是一个人用 AI 编码代理一路做出来的自用工具，没有经过任何团队评审，也没有在
-> 别人的环境里跑过。作者本人每天用它连生产库，但那不代表它对你也安全。
->
-> 已知的现实：
 > - 数据库客户端那部分（SQL 编辑器、表格、DDL、导出）相对稳，日常能用。
 > - 指标 / 血缘 / AI 分析那部分是新东西，**没有前人**，问题集中在这里。
-> - 只在 macOS (Apple Silicon) 上跑过。Windows / Linux 没测过。
+> - 只在 macOS (Apple Silicon) 上跑过，Windows / Linux 没测过；尚未在作者以外的
+>   环境中验证。
 > - 没有发布版本，没有签名证书，要用得自己从源码构建。
->
-> **写操作请先在测试库上验证。** 表格编辑会直接 UPDATE 你的库。
 
 ## 它是什么
 
@@ -52,6 +55,23 @@ npm run install:local      # macOS：构建并装进 /Applications（不会自�
 ```
 
 `npm run dev` 是纯浏览器预览，用的是模拟数据，不连真库。
+
+### 可选的内置运行时
+
+本地 AI（llama.cpp）和 Python 工作台需要两份体积较大的运行时，它们不在仓库里，
+**不装也能正常构建**，只是这两个功能不可用：
+
+```sh
+scripts/bundle-llama.sh     # 需要先 brew install llama.cpp
+scripts/bundle-python.sh
+```
+
+跑完这两个脚本，`npm run install:local` 会自动把它们打包进去。直接用
+`npm run tauri build` 的话，加上 `-- --config tauri.bundled.conf.json`。
+
+不装的后果：AI 面板里本地模型会提示 `llama-server not found`，Python 工作台
+提示「这个安装包没有内置 Python 运行时」。AI 面板改用云端模型（DeepSeek /
+OpenAI 兼容接口）不受影响。
 
 签名走 `SONDE_SIGNING_IDENTITY`，没有就用本地临时签名。旧版本移进废纸篓备份。
 
