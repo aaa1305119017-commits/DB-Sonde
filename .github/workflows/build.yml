@@ -88,7 +88,10 @@ jobs:
           if ($dumpbin) { & $dumpbin.FullName /dependents $exe.FullName }
           else { Write-Output 'dumpbin not found' }
 
+      # 即使单元测试挂了也要传产物 —— Windows 上应用构建是成功的,
+      # 挂的是测试 exe 的加载(0xc0000139)。不传的话就没法下载来实际试。
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: db-sonde-${{ matrix.target }}
           path: |
