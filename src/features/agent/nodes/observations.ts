@@ -59,7 +59,16 @@ export function reviewContext(items: LayoutItem[], state: AgentState, plans: Obs
         .map(Number).filter(Number.isFinite);
       if (!values.length) return [];
       if (plan.totalResult) return source.rows.length === 1 && values.length === 1 ? [Math.abs(values[0])] : [];
-      return ["sum", "count"].includes(definition.rollup) ? [Math.abs(values.reduce((a, b) => a + b, 0))] : [];
+      /* 可加的指标(sum/count)按行加起来就是卡上显示的数。
+         **不可加的不能丢。** 去重计数、平均这些加不得,但这儿要的是"这个数大概
+         几位数",不是精确值 —— 拿行内最大值当下界估计就够判跨档了。
+         以前这里 return [],于是「营业额 2000 万 + 门店数 48 家」在验收眼里
+         只有营业额一个数,magnitude == smallest,跨档判不出来,门店数照样
+         显示成「0万家」。修了消费者没修生产者,漏了很久。 */
+      if (["sum", "count"].includes(definition.rollup)) {
+        return [Math.abs(values.reduce((a, b) => a + b, 0))];
+      }
+      return [maxOf(values.map(Math.abs))!];
     });
     if (!sizes.length) return;
     magnitudes[index] = maxOf(sizes)!;

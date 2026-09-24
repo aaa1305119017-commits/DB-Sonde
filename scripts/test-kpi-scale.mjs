@@ -21,12 +21,45 @@ try {
     stdin: { contents: `
       export { scaledText } from './src/features/dashboard/widgets/metricUtils';
       export { reviewLayout } from './src/features/agent/review';
-      export { resolveLayout } from './src/features/agent/layout';`,
+      export { resolveLayout } from './src/features/agent/layout';
+      export { reviewContext } from './src/features/agent/nodes/observations';`,
       resolveDir: resolve('.'), loader: 'ts' },
     outfile, bundle: true, platform: 'node', format: 'cjs', logLevel: 'silent',
   });
   globalThis.localStorage = { getItem: () => null, setItem: () => {} };
-  const { scaledText, reviewLayout, resolveLayout } = createRequire(import.meta.url)(outfile);
+  const { scaledText, reviewLayout, resolveLayout, reviewContext } = createRequire(import.meta.url)(outfile);
+
+  /* ── 0. 量级是**算出来**的,不是喂进去的 ───────────────────────────────
+     下面 1) 测的是 reviewLayout(消费者),量级由测试直接给。可生产环境里量级由
+     reviewContext(生产者)算,而它**只收 sum / count 的指标** —— 去重计数、
+     平均这些被静默丢掉。于是「营业额 2000 万 + 门店数 48 家」这张卡,
+     生产者只看见营业额一个数,算出 magnitude == smallest,消费者收到的是
+     一张"量级整齐"的卡,MIXED_SCALE 永远不触发,门店数照样显示成「0万家」。
+     真机上就是这么漏过去的:修了消费者、测了消费者,生产者从来没测过。 */
+  {
+    const plan = {
+      metricIds: ['gmv', 'stores'],
+      shape: {
+        dimensions: [],
+        metrics: [
+          { field: 'gmv', rollup: 'sum' },
+          { field: 'stores', rollup: 'count_distinct' },
+        ],
+      },
+      result: { columns: [{ name: 'gmv' }, { name: 'stores' }], rows: [[20038000, 48]], truncated: false },
+    };
+    const item = { type: 'kpi', title: '两战区营业额与门店基数', metricIds: ['gmv', 'stores'], dimensions: [], reason: '' };
+    const ctx = reviewContext([item], { validatedMetrics: [] }, [plan]);
+    assert.equal(ctx.magnitudes[0], 20038000, '最大的那个指标要算进去');
+    assert.equal(ctx.smallest[0], 48,
+      '去重计数的门店数也必须算进量级 —— 丢了它,这张卡在验收眼里就是"量级整齐"的');
+
+    // 有了真实的 smallest,消费者才判得出跨档
+    const findings = reviewLayout(resolveLayout([{ ...item, scale: 'wan', width: 'third' }]), ctx);
+    const mixed = findings.find((f) => f.code === 'MIXED_SCALE');
+    assert(mixed, '2000 万和 48 差 40 多万倍,必须判成跨档');
+    assert.equal(mixed.fix.scale, 'auto');
+  }
 
   // ── 1. 一张卡上量级跨档 ─────────────────────────────────────────────────
   const auto = (v, unit) => scaledText(v, 1, unit, { scale: 'auto' }, true);
