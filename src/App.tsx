@@ -22,10 +22,8 @@ function Toolbar() {
   return (
     <div className="toolbar">
       <div className="brand">
-        <span className="logo">
-          <Database size={14} />
-        </span>
-        Sonde <small>beta</small>
+        <img className="logo" src="/db-sonde.png" alt="" />
+        DB Sonde <small>beta</small>
       </div>
       <div className="toolbar-spacer" />
       <button className="btn" onClick={() => useAi.getState().togglePanel()}>
