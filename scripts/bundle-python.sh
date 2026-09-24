@@ -72,9 +72,31 @@ else PYBIN="$PYROOT/bin/python3"; fi
 [ -e "$PYBIN" ] || { echo "!! python not found after extract"; exit 1; }
 echo "   $("$PYBIN" --version)"
 
-echo "→ installing core packages (清华镜像)"
-"$PYBIN" -m pip install --no-cache-dir --disable-pip-version-check -i "$PIP_INDEX" \
-  "${CORE_PACKAGES[@]}"
+# 能不能直接跑目标平台的 python?能就正常 pip;不能(在 arm64 上构建 x86_64)
+# 就用宿主的 pip 按目标平台**下载 wheel**。numpy/pandas/pyarrow 这些都是
+# 原生扩展,必须拿对应平台的 wheel,不能就地编译。
+if "$PYBIN" -c "pass" >/dev/null 2>&1; then
+  echo "→ installing core packages (native)"
+  "$PYBIN" -m pip install --no-cache-dir --disable-pip-version-check -i "$PIP_INDEX" \
+    "${CORE_PACKAGES[@]}"
+else
+  echo "→ cross-installing for $TARGET (host pip + --platform)"
+  case "$TARGET" in
+    x86_64-apple-darwin)      PIP_PLAT="macosx_11_0_x86_64" ;;
+    aarch64-apple-darwin)     PIP_PLAT="macosx_11_0_arm64" ;;
+    x86_64-pc-windows-msvc)   PIP_PLAT="win_amd64" ;;
+    x86_64-unknown-linux-gnu) PIP_PLAT="manylinux2014_x86_64" ;;
+    *) echo "!! 不知道 $TARGET 对应的 pip platform tag"; exit 1 ;;
+  esac
+  SITE="$(ls -d "$PYROOT"/lib/python*/site-packages 2>/dev/null || echo "$PYROOT/Lib/site-packages")"
+  mkdir -p "$SITE"
+  PY_MINOR="${PY_VERSION%.*}"        # 3.12.14 → 3.12
+  python3 -m pip install --no-cache-dir --disable-pip-version-check -i "$PIP_INDEX" \
+    --target "$SITE" \
+    --platform "$PIP_PLAT" --python-version "$PY_MINOR" \
+    --only-binary=:all: --upgrade \
+    "${CORE_PACKAGES[@]}"
+fi
 
 echo "→ stripping down (tests / caches / gui)"
 # Drop the fat we never use in a headless data runtime.

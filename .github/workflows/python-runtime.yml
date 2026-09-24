@@ -34,7 +34,9 @@ jobs:
         include:
           - os: macos-14
             target: aarch64-apple-darwin
-          - os: macos-13
+          # 不用 macos-13:那类 Intel runner 正在淘汰,实测排队 30 分钟分不到
+          # 机器。在 arm64 上构建,靠 pip --platform 取 x86_64 的 wheel。
+          - os: macos-14
             target: x86_64-apple-darwin
           - os: windows-latest
             target: x86_64-pc-windows-msvc
