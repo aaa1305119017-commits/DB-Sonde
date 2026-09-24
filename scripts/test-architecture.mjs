@@ -205,5 +205,16 @@ try {
   const other = m.structuredRequestPolicy('cloud', 'independent-model', body, 15000);
   assert.equal(other.body.thinking, undefined);
   assert.equal(other.timeoutMs, 15000);
+/* 组件类型清单只能有一份。以前 "kpi","line","bar",... 这串在 4 个文件里各写一遍
+   (domain / layoutDesigner 两处 / dashboardTools / DashboardCanvas),加一种类型
+   漏掉任何一处都**不报错** —— 表现是 AI 生成了但渲染不出来,或者画布能建但
+   AI 不知道有这个类型。这条守卫盯着那串字面量别再长出来。 */
+{
+  const dup = files.filter((f) => !f.endsWith('domain.ts')
+    && /["']kpi["']\s*,\s*["']line["']\s*,\s*["']bar["']/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(dup, [],
+    `组件类型清单只能在 dashboard/domain.ts 定义(WIDGET_TYPES),这些文件又抄了一份:${dup.join(', ')}`);
+}
+
   console.log(`Architecture checks passed: ${files.length} modules, no runtime import cycles; core boundaries, ETL mapping and partial failure, catalog isolation, dialects, persistence, unconfigured AI and provider policies.`);
 } finally { rmSync(dir, { recursive: true, force: true }); }

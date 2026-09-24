@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 const dir = mkdtempSync(join(tmpdir(), 'sonde-design-units-'));
 try {
   const output = join(dir, 'tests.cjs');
-  buildSync({ stdin: { contents: `export * from './src/features/agent/designUnits'; export * from './src/features/agent/designContracts'; export * from './src/features/agent/nodes/layoutDesigner'; export * from './src/features/agent/nodes/dashboardCompiler'; export {scaledText} from './src/features/dashboard/widgets/metricUtils';`, loader: 'ts', resolveDir: resolve('.') }, outfile: output, bundle: true, platform: 'node', format: 'cjs', logLevel: 'silent' });
+  buildSync({ stdin: { contents: `export {validate} from './src/features/agent/jsonSchema'; export {bandOf} from './src/features/agent/layout'; export * from './src/features/agent/designUnits'; export * from './src/features/agent/designContracts'; export * from './src/features/agent/nodes/layoutDesigner'; export * from './src/features/agent/nodes/dashboardCompiler'; export {scaledText} from './src/features/dashboard/widgets/metricUtils';`, loader: 'ts', resolveDir: resolve('.') }, outfile: output, bundle: true, platform: 'node', format: 'cjs', logLevel: 'silent' });
   const m = createRequire(import.meta.url)(output);
   const definitions = [ ['v1:total_gmv', '元'], ['v1:total_order_cnt', '单'], ['v1:offline_gmv', '元'], ['v1:online_gmv', '元'] ].map(([metricId, unit]) => ({ metricId, name: metricId, unit, rollup: 'sum', supportedDimensions: ['region'], caliber: 'SUM', dateScoped: true, sourceTables: ['sales'] }));
   const card = (metricIds, metrics, extra = {}) => ({ type: 'kpi', band: 'kpi', title: '整体核心指标', metricIds, metrics, dimensions: [], reason: 'Summary', ...extra });
@@ -60,5 +60,42 @@ try {
   const styles = calls.filter(call => call.name === 'style_component');
   assert(styles.every(call => call.input.numberFormat.scale === 'wan'));
   assert.equal(styles[0].input.metrics[ids[0]].unit, '元');
+  /* 「场景 → 能力」这张表里引用的字段必须真实存在。它是手写的,而字段清单是
+     从 STYLE_PROPERTIES 自动生成的 —— 两边会走散:改了字段名、挪了嵌套层级,
+     表里还指着旧路径,模型照着去填就会被 schema 拒掉,而没人知道为什么。 */
+  {
+    const guide = m.designCapabilityGuide();
+    const missing = [];
+    for (const { when, fields } of m.CAPABILITY_TRIGGERS) {
+      for (const f of fields) {
+        // 字段清单里每行形如 `chart.drillDimensions: 描述`;顶层字段(scale/tabs)
+        // 不在 STYLE_PROPERTIES 里,查 schema 本身。
+        const inGuide = guide.split('\n').some((line) => line.startsWith(`${f}:`));
+        const inSchema = JSON.stringify(m.LAYOUT_SCHEMA).includes(`"${f.split('.').pop()}"`);
+        if (!inGuide && !inSchema) missing.push(`${f}(出自「${when}」)`);
+      }
+    }
+    assert.deepEqual(missing, [], `CAPABILITY_TRIGGERS 指向了不存在的字段:${missing.join('; ')}`);
+    assert(m.CAPABILITY_TRIGGERS.length >= 8, '场景提示太少就起不到作用');
+  }
+
+  /* band 不再是必填的五选一。
+     以前散文里写着「没有四个 KPI 或一张表的配额」,schema 却要求每块都从
+     kpi/trend/structure/ranking/detail 里挑一个 —— schema 比散文有力,
+     模型每次凑齐五个角色,看板就千篇一律。现在它可选。 */
+  {
+    const itemSchema = m.LAYOUT_SCHEMA.properties.items.items;
+    assert(!itemSchema.required.includes('band'), 'band 不该是必填 —— 那等于要求模型凑角色');
+    const noBand = { type: 'bar', title: '各地区销售额', metricIds: ['m1'], dimensions: ['region'], reason: '比较' };
+    assert.deepEqual(m.validate(noBand, itemSchema), [], '省略 band 必须能过校验');
+
+    /* 但排序那条安全网不能跟着没:真机上出过「副标题写着按销售额降序、
+       柱子却按名称顺排」的图,名字叫排名、读出来的名次全是错的。 */
+    assert.equal(m.bandOf(noBand), 'ranking', '没给 band 的柱形图应兜底成 ranking,排序安全网才还在');
+    assert.equal(m.bandOf({ type: 'kpi' }), 'kpi');
+    assert.equal(m.bandOf({ type: 'table' }), 'detail');
+    assert.equal(m.bandOf({ type: 'bar', band: 'structure' }), 'structure', '模型明确给了就听它的');
+  }
+
   console.log('Design unit checks passed: reported KPI/chart/table cases, exact scaled values, nested cards, inherited units, invalid references/currencies/conflicting scales, cost records and compiler output.');
 } finally { rmSync(dir, { recursive: true, force: true }); }

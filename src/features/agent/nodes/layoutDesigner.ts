@@ -2,6 +2,7 @@ import { normalizeDesignUnits } from "../designUnits";
 import { S } from "../jsonSchema";
 import { STYLE_PROPERTIES } from "../styleSchema";
 import { BANDS, WIDTHS, type LayoutPlan } from "../layout";
+import { WIDGET_TYPES, LEAF_WIDGET_TYPES } from "../../dashboard/domain";
 import { designCapabilityGuide, validateDesignBindings } from "../designContracts";
 import { refineAnalysisLayout } from "../presentation";
 import type { AgentState } from "../state";
@@ -26,8 +27,8 @@ export const LAYOUT_SCHEMA = S.obj(
       type: "array", minItems: 2, maxItems: 14,
       items: S.obj(
         {
-          band: S.enumOf(BANDS, "这块内容扮演什么角色:kpi 核心数 / trend 趋势 / structure 结构占比 / ranking 排名 / detail 明细。**不决定位置**,位置你自己给"),
-          type: S.enumOf(["kpi", "line", "bar", "pie", "table", "text", "container"], "组件类型;text 是纯文字块,用来写小标题、口径注释、结论"),
+          band: S.enumOf(BANDS, "可选,**不用每块都填**。它只改两件事:填 ranking 时柱形默认横向、并按指标降序排(叫排名就得真排过)。不决定位置,也不是要你凑齐五种角色"),
+          type: S.enumOf([...WIDGET_TYPES], "组件类型;text 是纯文字块,用来写小标题、口径注释、结论"),
           title: S.str("组件标题,说人话"),
           subtitle: S.str("标题下的口径小字,可选"),
           footnote: S.str("卡片底部小字:数据截至、注意事项,可选"),
@@ -45,7 +46,7 @@ export const LAYOUT_SCHEMA = S.obj(
           secondaryMetricIds: S.arr(S.str(), "副指标，必须已验证"), seriesDimension: S.str("图例维度"),
           visible: S.bool("默认可见"), filtersEnabled: S.bool("单卡筛选器"), filterFields: S.arr(S.str(), "组件筛选字段:数据集里的维度字段名。'date' 是保留名,渲染成日期区间"),
         },
-        ["band", "type", "title", "metricIds", "dimensions", "reason"],
+        ["type", "title", "metricIds", "dimensions", "reason"],
       ),
     },
   },
@@ -54,7 +55,7 @@ export const LAYOUT_SCHEMA = S.obj(
 
 // Only one level of containers; a finite schema and a finite render budget.
 const childSchema = structuredClone(LAYOUT_SCHEMA.properties!.items.items!);
-childSchema.properties!.type = S.enumOf(["kpi", "line", "bar", "pie", "table", "text"]);
+childSchema.properties!.type = S.enumOf([...LEAF_WIDGET_TYPES]);
 LAYOUT_SCHEMA.properties!.items.items!.properties!.tabs = S.arr(S.obj({ title: S.str("分页标题"), items: S.arr(childSchema, "这一页的组件", 12) }, ["title", "items"]), "容器分页，最多六页", 6);
 
 export function createLayoutDesigner({ callStructured, getPlan }: { callStructured: StructuredCaller; getPlan: PlanReader; }) {

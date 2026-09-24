@@ -21,7 +21,7 @@ const JUDGEMENT_SCHEMA = S.obj(
             {
               title: S.str("改成什么标题"),
               subtitle: S.str("改成什么口径小字"),
-              band: S.enumOf(BANDS, "换到哪个层级"),
+              band: S.enumOf(BANDS, "可选;只在需要把某块改成排名(横向+降序)时给"),
               drop: S.bool("这个组件多余,删掉"),
             },
             [],
@@ -46,7 +46,7 @@ export function createDashboardReviewer({ callStructured, getPlan }: { callStruc
     const metrics = new Map((state.validatedMetrics ?? []).map((m) => [m.metricId, m]));
     const listing = items
       .map((item, i) =>
-        `${i}. [${item.band}] ${item.type} 「${item.title}」${item.subtitle ? `(副标题:${item.subtitle})` : ""} ` +
+        `${i}. ${item.band ? `[${item.band}] ` : ""}${item.type} 「${item.title}」${item.subtitle ? `(副标题:${item.subtitle})` : ""} ` +
         `指标=${item.metricIds.map((id) => metrics.get(id)?.name ?? id).join("+")} ` +
         `维度=${item.dimensions.join("+") || "无"}${item.topN ? ` 前${item.topN}` : ""}`)
       .join("\n");

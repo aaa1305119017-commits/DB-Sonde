@@ -11,6 +11,7 @@ import type {
   DashboardWidgetType,
 } from "../domain";
 import { datasetOf } from "../resolveDatasets";
+import { LEAF_WIDGET_TYPES } from "../domain";
 import type { ComponentFilterValue, ComponentFilterValueMap, DrillPathMap } from "../useDashboardRuntime";
 import { exportChartPng } from "../chartExport";
 import WidgetRenderer from "./WidgetRenderer";
@@ -197,7 +198,7 @@ export default function DashboardCanvas({
             <label className="dash-tab-add"><Plus size={12} /><span>{t("dashboard.addToTab")}</span>
               <select value="" onChange={(event) => { const type = event.target.value as DashboardWidgetType; if (type) onAddChild(widget.id, activeTab, type); }}>
                 <option value="">+</option>
-                {(["kpi", "line", "bar", "pie", "table", "text"] as DashboardWidgetType[]).map((type) => <option value={type} key={type}>{t(`dashboard.widget.${type}`)}</option>)}
+                {LEAF_WIDGET_TYPES.map((type) => <option value={type} key={type}>{t(`dashboard.widget.${type}`)}</option>)}
               </select>
             </label>
           )}

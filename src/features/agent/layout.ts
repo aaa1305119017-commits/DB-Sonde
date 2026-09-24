@@ -9,9 +9,16 @@ export const WIDTHS = ["quarter", "third", "half", "full"] as const;
 export type Width = (typeof WIDTHS)[number];
 
 export interface LayoutItem extends Omit<Partial<DashboardWidget["options"]>, "chart" | "text" | "appearance"> {
-  /** 信息层级。**不再决定位置** —— 只是这块内容扮演什么角色,
-   *  Reviewer 的规则和兜底排版还要用。位置由模型自己给。 */
-  band: Band;
+  /** 可选。**不决定位置**,也不是必须填的角色标签。
+   *
+   *  以前它是必填的五选一(kpi/trend/structure/ranking/detail)。散文里写着
+   *  「没有四个 KPI 或一张表的配额」,schema 却要求每块都挑一个角色 ——
+   *  **schema 比散文有力**,于是模型每次都凑齐五个角色,看板千篇一律。
+   *
+   *  现在只保留它真正驱动的行为:ranking 会让柱形默认横向、并按指标降序排
+   *  (真机上出过「副标题写着按销售额降序、柱子却按名称顺排」的事故)。
+   *  没给就按组件类型兜底推断,只用于模型没给坐标时的排版回退。 */
+  band?: Band;
   secondaryMetricIds?: string[];
   seriesDimension?: string;
   filtersEnabled?: boolean;
@@ -106,10 +113,20 @@ export interface PlacedItem extends LayoutItem {
  * 规则很简单,但要的就是简单:同一 band 的组件从左往右排,排不下就换行;
  * **换 band 一定换行** —— 否则趋势图会和 KPI 挤在同一行,阅读层次就没了。
  */
+/** band 没给时按类型兜底 —— 只在这条回退路径上用,不回写给模型。 */
+export function bandOf(item: LayoutItem): Band {
+  if (item.band) return item.band;
+  if (item.type === "kpi") return "kpi";
+  if (item.type === "line") return "trend";
+  if (item.type === "pie") return "structure";
+  if (item.type === "bar") return "ranking";
+  return "detail";
+}
+
 export function packLayout(items: LayoutItem[]): PlacedItem[] {
   const ordered = items
     .map((item, sourceIndex) => ({ item, sourceIndex }))
-    .sort((a, b) => BANDS.indexOf(a.item.band) - BANDS.indexOf(b.item.band));
+    .sort((a, b) => BANDS.indexOf(bandOf(a.item)) - BANDS.indexOf(bandOf(b.item)));
   const placed: PlacedItem[] = [];
   let y = 0;
   let x = 0;
@@ -123,8 +140,8 @@ export function packLayout(items: LayoutItem[]): PlacedItem[] {
   };
 
   for (const { item, sourceIndex } of ordered) {
-    if (band !== null && item.band !== band) newline();
-    band = item.band;
+    if (band !== null && bandOf(item) !== band) newline();
+    band = bandOf(item);
     const w = Math.min(12, SPAN[item.width] ?? 6);
     const h = HEIGHT[item.type] ?? 4;
     if (x + w > 12) newline();

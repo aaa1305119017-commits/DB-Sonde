@@ -38,7 +38,8 @@ const need = (id: string): DashboardDocument => {
   return doc!;
 };
 
-const WIDGET_TYPES = ["kpi", "line", "bar", "pie", "table", "text", "container"] as const;
+// 类型清单只在 dashboard/domain.ts 定义一次,见那里的注释。
+import { WIDGET_TYPES } from "../../dashboard/domain";
 
 /** 组件摘要 —— 回给模型的,不带整份文档(太大且没用)。 */
 const summarize = (doc: DashboardDocument) => ({

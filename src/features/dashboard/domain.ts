@@ -7,7 +7,13 @@ import { maxOf } from "../../lib/numbers";
 export const DASHBOARD_SCHEMA_VERSION = 3 as const;
 export const DEFAULT_DASHBOARD_PALETTE = ["#4d8dff", "#2ed6a1", "#ffb547", "#a98bff", "#ff6b8a", "#35c6f4", "#ff7a45", "#66e0e5"] as const;
 
-export type DashboardWidgetType = "kpi" | "line" | "bar" | "pie" | "table" | "text" | "container";
+/* 组件类型的**唯一定义处**。AI 的 schema、画布的下拉、导入时的白名单都从这里取 ——
+   以前这串字面量在 4 个文件里各写一遍,加一种类型漏掉任何一处的表现是
+   「AI 生成了但渲染不出来」或者反过来,而且不会报错。 */
+export const WIDGET_TYPES = ["kpi", "line", "bar", "pie", "table", "text", "container"] as const;
+/** 能放进容器分页的类型 —— 容器不能套娃。 */
+export const LEAF_WIDGET_TYPES = WIDGET_TYPES.filter((t) => t !== "container");
+export type DashboardWidgetType = (typeof WIDGET_TYPES)[number];
 export type DashboardSourceType = "sql" | "table" | "service";
 export type DashboardFilterKind = "select" | "text" | "in";
 export type DashboardDimensionSort = "asc" | "desc" | "group_asc" | "group_desc" | "custom";
@@ -579,7 +585,7 @@ export function normalizeDashboard(value: unknown): DashboardDocument {
     widgets: Array.isArray(item.widgets)
       ? item.widgets.map((widget) => {
           const raw = widget as Partial<DashboardWidget>;
-          const type: DashboardWidgetType = ["kpi", "line", "bar", "pie", "table", "text", "container"].includes(String(raw.type))
+          const type: DashboardWidgetType = (WIDGET_TYPES as readonly string[]).includes(String(raw.type))
             ? raw.type as DashboardWidgetType
             : "text";
           const fallback = createWidget(type, typeof raw.datasetId === "string" ? raw.datasetId : "");

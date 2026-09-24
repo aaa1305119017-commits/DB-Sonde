@@ -3,13 +3,44 @@ import type { JsonSchema } from './jsonSchema';
 import type { LayoutItem, LayoutPlan } from './layout';
 import type { AgentState } from './state';
 
+
+/**
+ * 场景 → 能力。**这是「什么时候用」,不是「有什么」** —— 后者由下面的字段清单
+ * 自动生成,已经有 138 行了。
+ *
+ * 为什么要这层:字段清单是一本字典。`chart.drillDimensions` 和 `chart.grouping`
+ * (千位分隔符)在里面长得一模一样,都是一行描述。模型看得见下钻,但没有任何理由
+ * 去够它 —— 于是产品加了功能,生成的看板还是老几样。
+ *
+ * 每条的 fields 必须是真实存在的字段路径,有守卫盯着(见 test-ai-boundaries),
+ * 改了字段名而忘了改这里会直接报错。
+ */
+export const CAPABILITY_TRIGGERS: { when: string; fields: string[] }[] = [
+  { when: "维度之间有层级(大区→门店、品类→商品),想让人点进去看下一层", fields: ["chart.drillDimensions"] },
+  { when: "希望点一张图能筛掉整块看板,而不只是本卡下钻", fields: ["chart.linkage"] },
+  { when: "同一批数据有几种读法(按渠道 / 按地区 / 按时间),塞一页太挤", fields: ["tabs"] },
+  { when: "两个指标量纲差很远(金额和比率),但要放一起看趋势", fields: ["secondaryMetricIds", "chart.secondarySeriesType"] },
+  { when: "一张卡上的指标量级差 1 万倍以上(2000 万 vs 48 家)", fields: ["scale"] },
+  { when: "要按两个维度交叉核对(地区 × 渠道)", fields: ["table.layout"] },
+  { when: "表很宽,左边的维度列要一直看得见", fields: ["table.freezeDimensions"] },
+  { when: "读者需要自己换个范围看,而不是你替他定死", fields: ["filtersEnabled", "filterFields"] },
+  { when: "同一张图里既要看绝对值又要看占比", fields: ["displayMode"] },
+  { when: "几个指标是一组、想让读者切换而不是并排铺开", fields: ["metricGroups", "metricSwitchDefault"] },
+  { when: "结论本身就是内容,不该让读者从图里自己拼", fields: ["content", "appearance.hideTitle"] },
+];
+
 /** Descriptions and accepted fields share the tool contract; no second hand-written whitelist. */
 export function designCapabilityGuide() {
   const walk = (schema: JsonSchema, path: string): string[] => {
     const line = `${path}: ${schema.description ?? schema.type}${schema.enum ? ` [${schema.enum.join(' / ')}]` : ''}${schema.minimum != null ? ` 最小 ${schema.minimum}` : ''}${schema.maximum != null ? ` 最大 ${schema.maximum}` : ''}`;
     return [line, ...Object.entries(schema.properties ?? {}).flatMap(([key, child]) => walk(child, `${path}.${key}`)), ...(schema.items ? walk(schema.items, `${path}[]`) : [])];
   };
+  const triggers = CAPABILITY_TRIGGERS.map((t) => `- ${t.when} → ${t.fields.join(" / ")}`).join("\n");
   return `以下是产品现有能力，不是要求每张看板都用。按表达目的选择；不认识的字段会指出具体错误。
+
+**遇到这些情况时，下面这些能力是为它准备的**（不是清单，是提示；没遇到就别硬用）：
+${triggers}
+
 布局：12栏，x/y/w/h控制位置和大小；文本可做大标题、分区、注释；container.tabs可做不同阅读层次的分页，不能套娃。
 内容：metricIds为主指标，secondaryMetricIds为右轴/副指标，seriesDimension为分类系列。所有引用来自已验证目录。
 交互：filtersEnabled/filterFields控制单卡筛选器，chart.drillDimensions控制下钻；visible决定可见性。不能因此改变既定业务范围。
