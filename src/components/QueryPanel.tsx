@@ -1,5 +1,6 @@
 import {
   Loader2,
+  PlugZap,
   TableProperties
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -45,6 +46,36 @@ export default function QueryPanel() {
   </div>;
 }
 
+
+/* 恢复出来的标签页,连接还没建立。
+ *
+ * 以前是 `.result-placeholder` 里塞一行字加一个按钮 —— 那个类是 grid + place-items:center,
+ * 两个子元素被分成上下两行、各占一半高度,于是字飘在上半截、按钮掉在下半截,中间一大片空白。
+ * 而且没说为什么是这个状态:恢复标签页**故意不自动连库**(恢复不等于同意连接),
+ * 不说明的话看着像坏了。 */
+function DisconnectedState({ tab }: { tab: { connId: string; connName: string; title: string; database?: string } }) {
+  const { t } = useI18n();
+  const connecting = useApp((s) => !!s.connecting[tab.connId]);
+  const where = [tab.connName, tab.database].filter(Boolean).join(" · ");
+  return (
+    <div className="disconnected">
+      <div className="disconnected-card">
+        <span className="disconnected-icon"><PlugZap size={22} /></span>
+        <h3>{tab.title}</h3>
+        <p className="disconnected-where">{where}</p>
+        <p className="disconnected-why">{t("workspace.disconnectedWhy")}</p>
+        <button
+          className="btn primary"
+          disabled={connecting}
+          onClick={() => void useApp.getState().connect(tab.connId).catch(() => { /* 失败由 connect 自己 toast */ })}
+        >
+          {connecting ? <><Loader2 size={14} className="spin" /> {t("workspace.connecting")}</> : t("workspace.connectAndOpen")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function WorkspaceContent({ tabId, active }: { tabId: string; active: boolean; }) {
   const { t } = useI18n();
   const tab = useApp(s => s.tabs.find(t => t.id === tabId));
@@ -67,7 +98,7 @@ function WorkspaceContent({ tabId, active }: { tabId: string; active: boolean; }
   }
 
   if ((tab.kind === "database" || tab.kind === "table" || tab.kind === "routine") && !connected) {
-    return <div className="main"><div className="result-placeholder"><p>{tab.connName} · {tab.database}</p><button className="btn primary" onClick={() => void useApp.getState().connect(tab.connId).catch(() => { })}>连接并打开页面</button></div></div>;
+    return <div className="main"><DisconnectedState tab={tab} /></div>;
   }
   if (tab.kind === "routine") return <Suspense fallback={<div className="object-state">正在加载…</div>}><RoutineWorkspace tab={tab} /></Suspense>;
   if (tab.kind === "database") {
