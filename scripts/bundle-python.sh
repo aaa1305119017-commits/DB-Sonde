@@ -12,11 +12,26 @@ set -euo pipefail
 
 PY_VERSION="3.12.14"
 PBS_TAG="20260901"
-ASSET="cpython-${PY_VERSION}+${PBS_TAG}-aarch64-apple-darwin-install_only.tar.gz"
+
+# 目标三元组。默认按本机推断;CI 里传参为各平台分别构建。
+# 注意 pip 装的是**原生 wheel**(numpy/pandas/pyarrow 都是),所以每个平台必须
+# 在自己的机器上构建,不能交叉。
+TARGET="${1:-}"
+if [ -z "$TARGET" ]; then
+  case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64)  TARGET="aarch64-apple-darwin" ;;
+    Darwin-x86_64) TARGET="x86_64-apple-darwin" ;;
+    Linux-x86_64)  TARGET="x86_64-unknown-linux-gnu" ;;
+    MINGW*|MSYS*|CYGWIN*) TARGET="x86_64-pc-windows-msvc" ;;
+    *) echo "!! 无法推断目标平台,请显式传参,例如 $0 x86_64-pc-windows-msvc"; exit 1 ;;
+  esac
+fi
+
+ASSET="cpython-${PY_VERSION}+${PBS_TAG}-${TARGET}-install_only.tar.gz"
 GH_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PBS_TAG}/${ASSET}"
-# GitHub's CDN is unreachable here; go through a mirror (fastest first).
-MIRRORS=("https://gh-proxy.com/" "https://ghfast.top/")
-PIP_INDEX="https://pypi.tuna.tsinghua.edu.cn/simple"
+# 直连优先(CI 上通);国内直连不通,再走镜像。
+MIRRORS=("" "https://gh-proxy.com/" "https://ghfast.top/")
+PIP_INDEX="${PIP_INDEX:-https://pypi.tuna.tsinghua.edu.cn/simple}"
 
 # Runtime version marker — bump when the python/packages change so the app
 # knows to re-extract on upgrade.
@@ -50,8 +65,11 @@ done
 echo "→ extracting"
 tar -xzf "$WORK/py.tar.gz" -C "$WORK"          # → $WORK/python/
 PYROOT="$WORK/python"
-PYBIN="$PYROOT/bin/python3"
-[ -x "$PYBIN" ] || { echo "!! python not found after extract"; exit 1; }
+# install_only 的布局:unix 在 bin/python3,Windows 在 python.exe(根目录)。
+if [ -x "$PYROOT/bin/python3" ]; then PYBIN="$PYROOT/bin/python3"
+elif [ -f "$PYROOT/python.exe" ]; then PYBIN="$PYROOT/python.exe"
+else PYBIN="$PYROOT/bin/python3"; fi
+[ -e "$PYBIN" ] || { echo "!! python not found after extract"; exit 1; }
 echo "   $("$PYBIN" --version)"
 
 echo "→ installing core packages (清华镜像)"
@@ -67,7 +85,10 @@ rm -rf \
   "$PYROOT"/lib/python*/idlelib \
   "$PYROOT"/lib/python*/lib2to3 \
   "$PYROOT"/lib/python*/ensurepip \
-  "$PYROOT"/lib/tcl* "$PYROOT"/lib/tk* "$PYROOT"/lib/Tix* "$PYROOT"/lib/itcl* 2>/dev/null || true
+  "$PYROOT"/lib/tcl* "$PYROOT"/lib/tk* "$PYROOT"/lib/Tix* "$PYROOT"/lib/itcl* \
+  "$PYROOT"/Lib/test "$PYROOT"/Lib/tkinter "$PYROOT"/Lib/turtledemo \
+  "$PYROOT"/Lib/idlelib "$PYROOT"/Lib/lib2to3 "$PYROOT"/Lib/ensurepip \
+  "$PYROOT"/tcl 2>/dev/null || true
 # Purge caches + compiled bytecode + bundled package tests.
 find "$PYROOT" -type d -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
 find "$PYROOT" -type d -name "tests" -path "*/site-packages/*" -prune -exec rm -rf {} + 2>/dev/null || true
@@ -75,10 +96,20 @@ find "$PYROOT" -name "*.pyc" -delete 2>/dev/null || true
 
 echo "$RUNTIME_VERSION" > "$PYROOT/RUNTIME_VERSION"
 
-echo "→ repacking → python-runtime.tar.gz"
-tar -czf "$OUT_DIR/python-runtime.tar.gz" -C "$WORK" python
+# 本机构建时产出 binaries/python-runtime.tar.gz(给 tauri 内置用);
+# 带参数为某个平台构建时,额外产出带三元组的名字,供上传 Release。
+OUT="$OUT_DIR/python-runtime.tar.gz"
+echo "→ repacking → $(basename "$OUT")"
+tar -czf "$OUT" -C "$WORK" python
+cp "$OUT" "$OUT_DIR/python-runtime-${TARGET}.tar.gz"
 
 echo "→ done:"
 du -sh "$PYROOT" | awk '{print "   extracted runtime:", $1}'
-ls -lh "$OUT_DIR/python-runtime.tar.gz" | awk '{print "   bundled tarball:  ", $5}'
+ls -lh "$OUT" | awk '{print "   bundled tarball:  ", $5}'
+echo "   target:            $TARGET"
 echo "   runtime version:   $RUNTIME_VERSION"
+if command -v shasum >/dev/null; then
+  shasum -a 256 "$OUT_DIR/python-runtime-${TARGET}.tar.gz"
+else
+  sha256sum "$OUT_DIR/python-runtime-${TARGET}.tar.gz"
+fi

@@ -190,6 +190,8 @@ export const api = {
     inTauri ? invoke<PyStatus>("python_status") : Promise.resolve(NO_PY),
   pythonEnsure: () =>
     inTauri ? invoke<PyStatus>("python_ensure") : Promise.resolve(NO_PY),
+  pythonInstall: () =>
+    inTauri ? invoke<PyStatus>("python_install") : Promise.resolve(NO_PY),
   pythonRun: (runId: string, path: string) =>
     inTauri ? invoke<void>("python_run", { req: { runId, path } }) : Promise.reject(new Error("需在桌面版运行")),
   pythonStop: (runId: string) =>
@@ -266,6 +268,10 @@ export interface PyStatus {
   installed: boolean;
   extracting: boolean;
   bundled: boolean;
+  /** 没内置时,这个平台能不能一键下载(有预建运行时且校验和已配置)。 */
+  downloadable: boolean;
+  /** 下载进度 0-100;解压阶段看 extracting。 */
+  progress: number;
   version: string;
   python: string | null;
   workspace: string;
@@ -280,6 +286,8 @@ const NO_PY: PyStatus = {
   installed: false,
   extracting: false,
   bundled: false,
+  downloadable: false,
+  progress: 0,
   version: "",
   python: null,
   workspace: "",

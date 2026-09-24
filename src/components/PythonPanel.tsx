@@ -87,6 +87,7 @@ export default function PythonPanel({ tab }: { tab: PythonTab }) {
   useUnsavedChanges(tab.id, dirty);
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState<PyStatus | null>(null);
+  const [installing, setInstalling] = useState(false);
   /* 输出攒一批再刷 —— 逐行 setState 会把整个数组复制一遍再重绘一次,
      打印五万行就是五万次全量复制加五万次渲染。攒批不丢行,见 useBatchedLines。 */
   const { lines: out, push: pushOut, flush: flushOut, reset: resetOut } = useBatchedLines<OutLine>();
@@ -150,7 +151,8 @@ export default function PythonPanel({ tab }: { tab: PythonTab }) {
       const s = await api.pythonEnsure();
       if (!alive) return;
       setStatus(s);
-      if (s.extracting) timer = setTimeout(tick, 1200);
+      // 下载/解压期间持续轮询,进度条才会动
+      if (s.extracting || s.progress > 0) timer = setTimeout(tick, 800);
     };
     void tick();
     return () => {
@@ -165,6 +167,26 @@ export default function PythonPanel({ tab }: { tab: PythonTab }) {
     const el = outRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [out]);
+
+  /** 用户点「一键安装」才下载 —— 180MB 不该在进面板时偷偷开始。 */
+  const install = useCallback(async () => {
+    setInstalling(true);
+    try {
+      setStatus(await api.pythonInstall());
+      const poll = setInterval(async () => {
+        const s = await api.pythonInstall();
+        setStatus(s);
+        if (s.installed || (!s.extracting && s.progress === 0)) {
+          clearInterval(poll);
+          setInstalling(false);
+        }
+      }, 800);
+    } catch (e) {
+      setInstalling(false);
+      pushOut({ kind: "err", text: `安装失败:${String(e)}` });
+      flushOut();
+    }
+  }, [pushOut, flushOut]);
 
   const save = useCallback(async () => {
     /* ⌘S 那条路是 `void save()` —— 写盘失败的话 promise 被 void 吞掉,
@@ -342,7 +364,28 @@ export default function PythonPanel({ tab }: { tab: PythonTab }) {
         </div>
       )}
       {status && !status.installed && !status.extracting && !status.bundled && inTauri && (
-        <div className="py-banner err">这个安装包没有内置 Python 运行时,需要重新构建带 Python 的版本。</div>
+        <div className="py-banner">
+          {installing ? (
+            <>
+              <PackageOpen size={15} /> 正在下载 Python 环境…… {status.progress}%
+              <span className="py-bar"><i style={{ width: `${status.progress}%` }} /></span>
+            </>
+          ) : (
+            <>
+              <PackageOpen size={15} /> Python 环境未安装。约 180MB,含 pandas / numpy / polars / matplotlib 等,装一次以后一直可用。
+              {status.downloadable ? (
+                <button className="py-install" onClick={() => void install()}>一键安装</button>
+              ) : (
+                <span className="py-hint">
+                  这个平台没有预建运行时,请用 <code>scripts/bundle-python.sh</code> 自行构建。
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {status?.error && !status.extracting && inTauri && (
+        <div className="py-banner err">{status.error}</div>
       )}
 
       <div className="py-editor">

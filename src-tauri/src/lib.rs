@@ -51,6 +51,7 @@ pub fn run() {
             scheduler::scheduler_fetch,
             python::python_status,
             python::python_ensure,
+            python::python_install,
             python::python_run,
             python::python_stop,
             python::py_workspace_dir,

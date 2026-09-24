@@ -20,11 +20,36 @@ use tauri::{Emitter, Manager};
 /// re-extracts on upgrade. Must match RUNTIME_VERSION in that script.
 const RUNTIME_VERSION: &str = "py3.12.14-pkgs3";
 
+/// 运行时不随安装包分发时,从这个固定的 Release tag 下载。运行时很少变
+/// (只有 Python 版本或包清单变了才动),所以不跟应用版本绑。
+const RUNTIME_TAG: &str = "runtime-py3.12.14-pkgs3";
+const RUNTIME_BASE: &str =
+    "https://github.com/aaa1305119017-commits/DB-Sonde/releases/download";
+
+/// 每个平台的 (资产名, 期望的 SHA256)。
+///
+/// **哈希写死在源码里,不从同一个服务器下 .sha256 来比。** 后者挡不住任何
+/// 控制了那台服务器或 CDN 的人 —— 他连哈希一起换掉就行。写死的坏处是换
+/// 运行时要改代码,但运行时本来就极少变。
+///
+/// 没有对应条目的平台**不下载**,直接告诉用户自己构建 —— 宁可不能用,
+/// 也不能不校验就解压执行一个 180MB 的 tar。
+fn runtime_asset() -> Option<(&'static str, &'static str)> {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("macos", "aarch64") => Some(("python-runtime-aarch64-apple-darwin.tar.gz", "")),
+        ("macos", "x86_64") => Some(("python-runtime-x86_64-apple-darwin.tar.gz", "")),
+        ("windows", "x86_64") => Some(("python-runtime-x86_64-pc-windows-msvc.tar.gz", "")),
+        _ => None,
+    }
+}
+
 #[derive(Default)]
 pub struct PyRuntime {
     /// run_id -> child pid, for stop().
     procs: Mutex<HashMap<String, u32>>,
     extracting: Arc<Mutex<bool>>,
+    /// 下载进度 0-100。None = 没在下载。
+    progress: Arc<Mutex<Option<u8>>>,
     error: Arc<Mutex<Option<String>>>,
     /// The `sonde` bridge HTTP server: (port, token), started lazily.
     bridge: Mutex<Option<(u16, String)>>,
@@ -107,8 +132,14 @@ fn runtime_root() -> PathBuf {
 fn python_dir() -> PathBuf {
     runtime_root().join("python")
 }
+/// python-build-standalone 的 install_only 布局在两边不一样:
+/// unix 是 `python/bin/python3`,Windows 是 `python/python.exe`。
+/// 写死 unix 那条的话,Windows 上装好了运行时也找不到解释器。
 fn python_bin() -> PathBuf {
-    python_dir().join("bin/python3")
+    #[cfg(windows)]
+    { python_dir().join("python.exe") }
+    #[cfg(not(windows))]
+    { python_dir().join("bin/python3") }
 }
 #[cfg(test)]
 thread_local! { static TEST_WORKSPACE: std::cell::RefCell<Option<PathBuf>> = const { std::cell::RefCell::new(None) }; }
@@ -144,6 +175,10 @@ pub struct PyStatus {
     installed: bool,
     extracting: bool,
     bundled: bool,
+    /// 没内置时,这个平台能不能下载(有资产名且哈希已配置)。
+    downloadable: bool,
+    /// 0-100,仅下载阶段有意义;解压阶段看 extracting。
+    progress: u8,
     version: String,
     python: Option<String>,
     workspace: String,
@@ -155,6 +190,8 @@ fn make_status(app: &tauri::AppHandle, rt: &PyRuntime) -> PyStatus {
         installed: runtime_ready(),
         extracting: *rt.extracting.lock().unwrap(),
         bundled: bundled_tar(app).is_some(),
+        downloadable: runtime_asset().is_some_and(|(_, sha)| !sha.is_empty()),
+        progress: rt.progress.lock().unwrap().unwrap_or(0),
         version: RUNTIME_VERSION.to_string(),
         python: runtime_ready().then(|| python_bin().to_string_lossy().into_owned()),
         workspace: workspace_dir().to_string_lossy().into_owned(),
@@ -174,12 +211,11 @@ pub fn python_ensure(app: tauri::AppHandle, rt: tauri::State<'_, PyRuntime>) -> 
     if runtime_ready() || *rt.extracting.lock().unwrap() {
         return make_status(&app, &rt);
     }
+    // 没内置就直接返回状态 —— 前端据此显示「一键安装」按钮,由用户决定要不要
+    // 下 180MB。以前这里塞一条错误,进面板就红一片,而用户什么都没做错。
     let tar = match bundled_tar(&app) {
         Some(t) => t,
-        None => {
-            *rt.error.lock().unwrap() = Some("这个安装包没有内置 Python 运行时(需重新构建)".into());
-            return make_status(&app, &rt);
-        }
+        None => return make_status(&app, &rt),
     };
 
     *rt.extracting.lock().unwrap() = true;
@@ -199,6 +235,94 @@ pub fn python_ensure(app: tauri::AppHandle, rt: tauri::State<'_, PyRuntime>) -> 
     });
 
     make_status(&app, &rt)
+}
+
+
+/// 下载并安装运行时。内置就用内置的,否则按平台从固定 Release tag 下载,
+/// **校验 SHA256 之后**才解压。立刻返回,进度轮询 `python_status`。
+#[tauri::command]
+pub fn python_install(app: tauri::AppHandle, rt: tauri::State<'_, PyRuntime>) -> PyStatus {
+    if runtime_ready() || *rt.extracting.lock().unwrap() || rt.progress.lock().unwrap().is_some() {
+        return make_status(&app, &rt);
+    }
+    if bundled_tar(&app).is_some() {
+        return python_ensure(app, rt);
+    }
+    let (asset, sha) = match runtime_asset() {
+        Some(a) => a,
+        None => {
+            *rt.error.lock().unwrap() =
+                Some(format!("这个平台({} {})没有预建的 Python 运行时,请自行用 scripts/bundle-python.sh 构建。",
+                    std::env::consts::OS, std::env::consts::ARCH));
+            return make_status(&app, &rt);
+        }
+    };
+    if sha.is_empty() {
+        *rt.error.lock().unwrap() =
+            Some("这个平台的运行时校验和尚未配置,拒绝下载 —— 不校验就解压执行等于把机器交给下载源。请自行用 scripts/bundle-python.sh 构建。".into());
+        return make_status(&app, &rt);
+    }
+
+    *rt.progress.lock().unwrap() = Some(0);
+    *rt.error.lock().unwrap() = None;
+    let (progress, extracting, error) = (rt.progress.clone(), rt.extracting.clone(), rt.error.clone());
+    let app2 = app.clone();
+    let url = format!("{RUNTIME_BASE}/{RUNTIME_TAG}/{asset}");
+
+    std::thread::spawn(move || {
+        let result = download_and_extract(&url, sha, &progress, &extracting);
+        if let Err(e) = &result {
+            *error.lock().unwrap() = Some(e.clone());
+        }
+        *progress.lock().unwrap() = None;
+        *extracting.lock().unwrap() = false;
+        let _ = app2.emit("python://ready", runtime_ready());
+    });
+
+    make_status(&app, &rt)
+}
+
+fn download_and_extract(
+    url: &str,
+    expect_sha: &str,
+    progress: &Arc<Mutex<Option<u8>>>,
+    extracting: &Arc<Mutex<bool>>,
+) -> Result<(), String> {
+    use std::io::Read;
+    let mut resp = reqwest::blocking::get(url).map_err(|e| format!("下载失败:{e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("下载失败:HTTP {}", resp.status()));
+    }
+    let total = resp.content_length().unwrap_or(0);
+
+    let tmp = runtime_root().join("python-runtime.download");
+    std::fs::create_dir_all(runtime_root()).map_err(|e| format!("建目录失败:{e}"))?;
+    let mut file = std::fs::File::create(&tmp).map_err(|e| format!("写临时文件失败:{e}"))?;
+    let mut hasher = <sha2::Sha256 as sha2::Digest>::new();
+    let mut buf = vec![0u8; 256 * 1024];
+    let mut done: u64 = 0;
+    loop {
+        let n = resp.read(&mut buf).map_err(|e| format!("下载中断:{e}"))?;
+        if n == 0 { break; }
+        std::io::Write::write_all(&mut file, &buf[..n]).map_err(|e| format!("写盘失败:{e}"))?;
+        sha2::Digest::update(&mut hasher, &buf[..n]);
+        done += n as u64;
+        if total > 0 {
+            *progress.lock().unwrap() = Some(((done * 100 / total) as u8).min(100));
+        }
+    }
+    drop(file);
+
+    let got = format!("{:x}", sha2::Digest::finalize(hasher));
+    if got != expect_sha {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(format!("校验和不符,已丢弃。期望 {expect_sha},实际 {got}"));
+    }
+
+    *extracting.lock().unwrap() = true;
+    let r = extract_runtime(&tmp);
+    let _ = std::fs::remove_file(&tmp);
+    r
 }
 
 fn extract_runtime(tar: &Path) -> Result<(), String> {

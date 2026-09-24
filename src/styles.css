@@ -3224,3 +3224,34 @@ button {
   line-height: 1.75;
   white-space: pre-wrap;
 }
+
+/* Python 运行时安装:按钮 + 进度条。进面板不自动下 180MB,由用户点。 */
+.py-install {
+  margin-left: 10px;
+  padding: 3px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.py-install:hover { filter: brightness(1.08); }
+.py-hint { margin-left: 8px; opacity: .75; }
+.py-hint code { font-family: var(--mono); font-size: 11px; }
+.py-bar {
+  display: inline-block;
+  width: 160px;
+  height: 6px;
+  margin-left: 10px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+  vertical-align: middle;
+}
+.py-bar i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width .3s ease;
+}
