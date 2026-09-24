@@ -146,6 +146,18 @@ try {
     );
     assert.equal(typed('', 806522, false), '', '非数字列清空是空串,不该按数字列写 NULL');
 
+    /* 文本列清空存什么,看列能不能为 NULL。
+       真机:把一格 varchar 清空保存,它显示成空白,旁边的格子显示「NULL」——
+       以为一样,其实存的是 ''。IS NULL 查不到它,数字列清空却又是 NULL,
+       同一个"清空"动作按类型结果不一样。 */
+    const col = (input, original, nullable) => m.parseEditedValue(input, original, msg, false, nullable);
+    assert.equal(col('', '2001073382', true), null, '可空文本列清空要存 NULL');
+    assert.equal(col('', '2001073382', false), '', 'NOT NULL 列写 NULL 会被库拒掉,清空只能是空串');
+    assert.equal(col('', '2001073382', undefined), '', '拿不到列元数据时保持老行为');
+    assert.equal(col('  ', 'x', true), '  ', '敲的空格是内容,不当成清空');
+    assert.equal(col('abc', 'x', true), 'abc', '正常输入不受影响');
+    assert.equal(col('NULL', 'x', false), null, '手打 NULL 照旧是 NULL(NOT NULL 列由库去拒)');
+
     /* 反过来不能用列类型强转:DECIMAL 是故意以字符串回来的(保精度),
        一旦按"这是数字列"去 Number(),100.00 就成了 100,金额列悄悄丢小数位。
        columnIsNumeric 只用来放行,不用来收紧。 */

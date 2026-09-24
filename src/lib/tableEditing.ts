@@ -44,8 +44,16 @@ export function parseEditedValue(
   /** 列的声明类型是不是数字。传 false = 这列不是数字列,任何文本都该收下。
    *  不传就退回老行为(按值猜),给还没接上类型信息的调用方留路。 */
   columnIsNumeric?: boolean,
+  /** 列允不允许 NULL。true = 清空就存 NULL;false(NOT NULL)= 清空存空字符串,
+   *  写 NULL 会被库拒掉;不传 = 不知道,保持老行为(文本列存空字符串)。 */
+  columnNullable?: boolean,
 ): Cell {
   if (input.trim().toUpperCase() === "NULL") return null;
+  /* 文本列清空,以前一律存 ''。可数字列、布尔列清空都是 NULL,同一个"清空"
+     动作按类型结果不一样;而 '' 和 NULL 在库里是两回事(IS NULL 查不到 '')。
+     界面上 NULL 显示成斜体「NULL」、'' 显示成空白 —— 用户清空后看到的是空白,
+     以为跟旁边的 NULL 一样,其实不是。可空列清空就该是 NULL。 */
+  if (input === "" && columnNullable === true) return null;
   const blank = input.trim() === "";
   if (typeof original === "number" && columnIsNumeric !== false) {
     if (blank) return null;

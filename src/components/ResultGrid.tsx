@@ -116,6 +116,8 @@ interface Props {
    *  (e.g. cancelled confirm) to keep the changes staged. */
   onSaveRowChanges?: (payload: { inserts: Cell[][]; deletes: number[] }) => Promise<void>;
   onEditError?: (message: string) => void;
+  /** 按列名给出能否为 NULL(来自表元数据)。决定清空单元格存 NULL 还是 ''。 */
+  nullableColumns?: Record<string, boolean>;
   onDirtyChange?: (dirty: boolean) => void;
   /** Current sort keys. An array preserves SQL precedence; a singleton remains
    *  accepted for query-result grids that sort locally. */
@@ -184,6 +186,7 @@ export default function ResultGrid({
   onSaveColumns,
   onSaveRowChanges,
   onEditError,
+  nullableColumns,
   onDirtyChange,
   sort,
   onSortColumn,
@@ -327,6 +330,7 @@ export default function ResultGrid({
   // Alignment follows the column's declared type, not each value's runtime type
   // (so a DECIMAL returned as a string still right-aligns).
   const numericCols = useMemo(() => cols.map((c) => isNumericType(c.typeName)), [cols]);
+  const nullableCols = useMemo(() => cols.map((c) => nullableColumns?.[c.name]), [cols, nullableColumns]);
 
   const valueAt = useCallback(
     (pos: number, c: number): Cell => {
@@ -479,7 +483,7 @@ export default function ResultGrid({
         const orig = rows[r]?.[c];
         let value: Cell;
         try {
-          value = parseEditedValue(raw, orig, { number: t("edit.validNumber"), boolean: t("edit.validBoolean") }, numericCols[c]);
+          value = parseEditedValue(raw, orig, { number: t("edit.validNumber"), boolean: t("edit.validBoolean") }, numericCols[c], nullableCols[c]);
         } catch (error) {
           onEditError?.(String(error));
           return false;
@@ -502,7 +506,7 @@ export default function ResultGrid({
       });
       return true;
     },
-    [editable, edits, rows, onEditError, t, numericCols],
+    [editable, edits, rows, onEditError, t, numericCols, nullableCols],
   );
 
   const columnSample = useCallback(
@@ -513,7 +517,7 @@ export default function ResultGrid({
   const setColumnValue = (c: number, raw: string): boolean => {
     let value: Cell;
     try {
-      value = parseEditedValue(raw, columnSample(c), { number: t("edit.validNumber"), boolean: t("edit.validBoolean") }, numericCols[c]);
+      value = parseEditedValue(raw, columnSample(c), { number: t("edit.validNumber"), boolean: t("edit.validBoolean") }, numericCols[c], nullableCols[c]);
     } catch (error) {
       onEditError?.(String(error));
       return false;
