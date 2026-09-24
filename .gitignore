@@ -45,3 +45,6 @@ secrets.env
 *.keystore
 id_rsa*
 .netrc
+
+# 本机的 agent / 编辑器配置,不进仓库
+.claude/

@@ -1,11 +1,10 @@
 import { useGlassPill } from "../hooks/useGlassPill";
 import { explainMetadataFailure } from "../lib/metadataFailure";
 import { useUnsavedChanges } from "../hooks/useUnsavedChanges";
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   Braces,
   Columns3,
-  Copy,
   Database,
   Filter,
   KeyRound,
@@ -147,19 +146,16 @@ function IndexesPanel({ indexes }: { indexes: IndexInfo[] }) {
   );
 }
 
-function DdlPanel({ ddl }: { ddl: string }) {
+/* 格式化 + 高亮在懒加载的 DdlCode 里(CodeMirror 和 sql-formatter 不小,
+   没必要让每次启动都下载)。加载那一下先显示原文,不留白屏。 */
+const DdlCode = lazy(() => import("./DdlCode"));
+
+function DdlPanel({ ddl, kind }: { ddl: string; kind?: DbKind }) {
   const { t } = useI18n();
-  const copyDdl = () => {
-    navigator.clipboard?.writeText(ddl);
-    useApp.getState().showToast({ kind: "success", text: t("inspector.ddlCopied") });
-  };
   return (
-    <div className="ddl-view">
-      <button className="btn ghost sm" onClick={copyDdl}>
-        <Copy size={13} /> {t("inspector.copyDdl")}
-      </button>
-      <pre>{ddl || t("inspector.noDdl")}</pre>
-    </div>
+    <Suspense fallback={<div className="ddl-view"><pre>{ddl || t("inspector.noDdl")}</pre></div>}>
+      <DdlCode ddl={ddl} kind={kind} />
+    </Suspense>
   );
 }
 
@@ -713,7 +709,7 @@ export default function TableInspector({ tab }: { tab: TableTab }) {
             ) : section === "indexes" ? (
               <IndexesPanel indexes={visibleIndexes} />
             ) : section === "ddl" ? (
-              <DdlPanel ddl={ddl} />
+              <DdlPanel ddl={ddl} kind={kind} />
             ) : null}
             </>
           )}

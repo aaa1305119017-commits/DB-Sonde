@@ -365,7 +365,9 @@ export const mockApi = {
   async getObjectDdl(table: string, objectKind: string) {
     await delay(60);
     if (objectKind === "view") {
-      return "CREATE VIEW monthly_revenue AS\nSELECT substr(sale_date, 1, 7) AS month, sum(amount) AS revenue\nFROM demo_sales\nGROUP BY 1;";
+      /* 故意写成 MySQL SHOW CREATE VIEW 的原样:一整行、带 DEFINER、嵌套子查询和
+         CASE WHEN。真库上视图 DDL 就长这样,DDL 面板的格式化要在这上面调得出效果。 */
+      return "CREATE ALGORITHM=UNDEFINED DEFINER=`app`@`%` SQL SECURITY DEFINER VIEW `monthly_revenue` AS select `t`.`month` AS `month`,`t`.`revenue` AS `revenue`,`t`.`band` AS `band` from (select substr(`s`.`sale_date`,1,7) AS `month`,sum(`s`.`amount`) AS `revenue`,(case when (sum(`s`.`amount`) >= 100000) then 'high' when (sum(`s`.`amount`) >= 20000) then 'mid' else 'low' end) AS `band` from `demo_sales` `s` where ((`s`.`amount` > 0) and (`s`.`status` <> 'void')) group by substr(`s`.`sale_date`,1,7)) `t` order by `t`.`month`";
     }
     const defs = (columns[table] ?? []).map((column) =>
       `  \"${column.name}\" ${column.dataType}${column.isPrimaryKey ? " PRIMARY KEY" : ""}${column.nullable ? "" : " NOT NULL"}`,

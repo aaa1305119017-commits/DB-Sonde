@@ -1795,7 +1795,7 @@ button {
 .property-cards b { color: var(--text-3); font-size: 13.5px; font-weight: 600; }
 .property-cards span { user-select: text; }
 .ddl-view { min-height: 100%; position: relative; padding: 12px; }
-.ddl-view button { position: absolute; top: 18px; right: 18px; }
+.ddl-view > button { position: absolute; top: 18px; right: 18px; }
 .ddl-view pre {
   min-height: 100%;
   margin: 0;
@@ -1808,6 +1808,37 @@ button {
   white-space: pre-wrap;
   user-select: text;
 }
+/* DDL:格式化 + 高亮(DdlCode)。和 SQL 编辑器同一套 CodeMirror 主题。 */
+.ddl-code { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+.ddl-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ddl-toggle {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+}
+.ddl-toggle button {
+  padding: 3px 12px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ddl-toggle button.on { background: var(--accent); color: #fff; }
+.ddl-note { font-size: 12px; color: var(--text-3, var(--text-2)); }
+.ddl-code .cm-theme, .ddl-code .cm-editor {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.ddl-code .cm-scroller { font: 14px/1.65 var(--mono); }
+.ddl-code .cm-content { user-select: text; }
+
 .data-edit-hint {
   height: 30px;
   display: flex;
