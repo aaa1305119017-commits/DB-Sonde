@@ -61,6 +61,20 @@ try {
     assert.equal(mixed.fix.scale, 'auto');
   }
 
+  /* 页面长度的阈值要和"组件数量由分析深度决定"这条设计提示对得上。
+     原来是 40 行 —— 大概八九个组件就超了,模型刚按深度铺开就被验收推回去精简,
+     两条规则互相打架。长本身不是错,滚半天没新东西才是。 */
+  {
+    const row = (y) => ({ type: 'bar', title: `图${y}`, metricIds: ['m1'], dimensions: ['d'], reason: '', x: 0, y, w: 12, h: 8 });
+    const ctx = { validatedMetricIds: ['m1'], ratioMetricIds: [], categoryCounts: {}, pointCounts: {}, magnitudes: {}, smallest: {}, timeDimensions: [] };
+    const tooLong = (items) => reviewLayout(resolveLayout(items), ctx).some((f) => f.code === 'TOO_LONG');
+
+    // 七张整宽图 = 56 行,是个有深度的看板,不该被判太长
+    assert(!tooLong([0, 8, 16, 24, 32, 40, 48].map(row)), '56 行不该判太长 —— 会把按深度铺开的设计推回去精简');
+    // 九张 = 72 行,确实该提醒了
+    assert(tooLong([0, 8, 16, 24, 32, 40, 48, 56, 64].map(row)), '72 行该提醒拆页');
+  }
+
   // ── 1. 一张卡上量级跨档 ─────────────────────────────────────────────────
   const auto = (v, unit) => scaledText(v, 1, unit, { scale: 'auto' }, true);
   assert.equal(auto(56825000, '元'), '5,682.5万元', '大额按万');

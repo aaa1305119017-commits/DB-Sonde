@@ -172,12 +172,17 @@ export function reviewLayout(placed: PlacedItem[], context: ReviewContext): Revi
     }
   }
 
-  // R7 页面太长 —— 得滚半天才看到底
+  /* R7 页面太长。
+     阈值从 40 提到 64:40 行大概就是八九个组件,而设计提示现在是"组件数量由问题的
+     分析深度决定"—— 两边会打架,模型刚按深度铺开就被这条推回去精简。
+     长本身不是错,滚半天却没新东西才是。所以只在**明显**过长时提醒,
+     而且建议改成拆分页(container.tabs),不是砍内容。 */
   const height = layoutHeight(placed);
-  if (height > 40) {
+  if (height > 64) {
     findings.push({
       layer: "dashboard", severity: "should_fix", code: "TOO_LONG",
-      reason: `看板有 ${height} 行高,要滚很久。建议精简组件或拆成多页。`,
+      reason: `看板有 ${height} 行高,要滚很久才看得到底。考虑用 container.tabs 分成几页,` +
+        `按阅读层次组织;内容本身不必删。`,
     });
   }
 
