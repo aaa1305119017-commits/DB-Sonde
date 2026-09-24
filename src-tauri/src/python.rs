@@ -36,9 +36,9 @@ const RUNTIME_BASE: &str =
 /// 也不能不校验就解压执行一个 180MB 的 tar。
 fn runtime_asset() -> Option<(&'static str, &'static str)> {
     match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("macos", "aarch64") => Some(("python-runtime-aarch64-apple-darwin.tar.gz", "")),
-        ("macos", "x86_64") => Some(("python-runtime-x86_64-apple-darwin.tar.gz", "")),
-        ("windows", "x86_64") => Some(("python-runtime-x86_64-pc-windows-msvc.tar.gz", "")),
+        ("macos", "aarch64") => Some(("python-runtime-aarch64-apple-darwin.tar.gz", "b2c7611af35cc003158b96ba2cbe382d9bb3b16bc34ed1e36872e9ba880ca097")),
+        ("macos", "x86_64") => Some(("python-runtime-x86_64-apple-darwin.tar.gz", "6e98e22f3a1374716c827bd5c2692ee4573a18ceca0cc326594dd39b90c01001")),
+        ("windows", "x86_64") => Some(("python-runtime-x86_64-pc-windows-msvc.tar.gz", "ed9c0139dcafc09762e70bea4ebbb32a90c68f093c5954b52dca72a52e919bb5")),
         _ => None,
     }
 }
@@ -314,15 +314,27 @@ fn download_and_extract(
     drop(file);
 
     let got = format!("{:x}", sha2::Digest::finalize(hasher));
-    if got != expect_sha {
+    if let Err(e) = check_sha256(&got, expect_sha) {
         let _ = std::fs::remove_file(&tmp);
-        return Err(format!("校验和不符,已丢弃。期望 {expect_sha},实际 {got}"));
+        return Err(e);
     }
 
     *extracting.lock().unwrap() = true;
     let r = extract_runtime(&tmp);
     let _ = std::fs::remove_file(&tmp);
     r
+}
+
+/// 下载完的实际哈希 vs 源码里写死的期望值。抽出来是为了能单测 ——
+/// 「校验通过」这种事最怕写了个永远不会失败的检查。
+fn check_sha256(got: &str, expect: &str) -> Result<(), String> {
+    if expect.is_empty() {
+        return Err("没有配置校验和,拒绝安装".into());
+    }
+    if !got.eq_ignore_ascii_case(expect) {
+        return Err(format!("校验和不符,已丢弃。期望 {expect},实际 {got}"));
+    }
+    Ok(())
 }
 
 fn extract_runtime(tar: &Path) -> Result<(), String> {
@@ -1160,4 +1172,37 @@ mod workspace_tests {
         std::fs::remove_file(outside).unwrap();
     }
 
+}
+
+#[cfg(test)]
+mod runtime_download_tests {
+    use super::*;
+
+    /* 运行时是从网上下的一个 180MB tar,解开就直接执行。校验和是这条路上
+       唯一的防线,所以这里要确认它真的能**拒绝**,而不是写了个永远返回 Ok
+       的检查。 */
+    #[test]
+    fn checksum_rejects_a_mismatch_and_a_missing_expectation() {
+        let good = "b2c7611af35cc003158b96ba2cbe382d9bb3b16bc34ed1e36872e9ba880ca097";
+        assert!(check_sha256(good, good).is_ok(), "一致时必须放行");
+        assert!(check_sha256(&good.to_uppercase(), good).is_ok(), "大小写不该影响");
+
+        let tampered = format!("0{}", &good[1..]);
+        let err = check_sha256(&tampered, good).unwrap_err();
+        assert!(err.contains("校验和不符"), "改一位就必须拒绝,实际:{err}");
+
+        // 没配置期望值时绝不能"因为没东西可比"就放过去
+        let err = check_sha256(good, "").unwrap_err();
+        assert!(err.contains("拒绝安装"), "没有期望值必须拒绝,实际:{err}");
+    }
+
+    /* 每个平台要么有哈希,要么没有条目 —— 不能出现"有资产名但哈希是空串",
+       那样 downloadable 会是 false,按钮消失,而原因没人看得出来。 */
+    #[test]
+    fn every_listed_platform_has_a_pinned_hash() {
+        if let Some((asset, sha)) = runtime_asset() {
+            assert_eq!(sha.len(), 64, "{asset} 的哈希长度不对:{sha:?}");
+            assert!(sha.chars().all(|c| c.is_ascii_hexdigit()), "{asset} 的哈希不是十六进制");
+        }
+    }
 }
